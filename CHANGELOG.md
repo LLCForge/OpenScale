@@ -2,6 +2,17 @@
 
 All notable changes to OpenScale. Versions follow `MAJOR.MINOR.PATCH` with a minor number from 0 to 9 (`1.9` is followed by `2.0`); betas carry `-beta.N`.
 
+## v1.0.0-beta.3
+
+First release built and published automatically by GitHub Actions. Same features as 1.0.0-beta.2.
+
+### Fixed
+- Release builds on Linux runners: the Windows resource compiler is called by its MinGW name, so it finds the Windows headers.
+- The panel builds without the long-form documentation folder.
+- Line endings are fixed to LF in every checkout, so formatting checks pass on Windows.
+- Timing-sensitive tests (remote desktop, speed test, file browsing) no longer fail on slow CI machines.
+- `uninstall` on Linux no longer fails on systems without nftables or systemd.
+
 ## v1.0.0-beta.2
 
 **Upgrade order:** update the coordinator first, then every device, and only then sign documents that use the new fields (device icons, IP ranges in groups, support rules). Signing them raises the network's minimum client version to `1.0.0-beta.2`; older devices would drop off the network.

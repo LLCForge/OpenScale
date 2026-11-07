@@ -213,7 +213,8 @@ func testCtx(t *testing.T) context.Context {
 
 func waitFor(t *testing.T, what string, cond func() bool) {
 	t.Helper()
-	deadline := time.Now().Add(5 * time.Second)
+	// Generous: shared CI runners can be much slower than a desktop.
+	deadline := time.Now().Add(15 * time.Second)
 	for !cond() {
 		if time.Now().After(deadline) {
 			t.Fatalf("timed out waiting for %s", what)

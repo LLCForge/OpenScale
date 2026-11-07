@@ -48,9 +48,14 @@ function titleOf(body, fallback) {
   return m ? m[1].trim() : fallback
 }
 
-const adrNames = (await readdir(path.join(repo, "docs", "adr")))
-  .filter((n) => /^\d{4}-.+\.md$/.test(n))
-  .sort()
+// The long-form documents may be absent from a checkout; the panel then
+// ships only the documents that exist.
+let adrNames = []
+try {
+  adrNames = (await readdir(path.join(repo, "docs", "adr"))).filter((n) => /^\d{4}-.+\.md$/.test(n)).sort()
+} catch {
+  console.warn("docs/adr yok; karar kayıtları atlandı")
+}
 const entries = [
   ...fixed,
   ...adrNames.map((n) => ({ source: `docs/adr/${n}`, group: "Karar kayıtları (ADR)" })),

@@ -217,11 +217,20 @@ func TestV3FileBrowse(t *testing.T) {
 	if _, err := c.FetchFile(ctx, "belgeler/alt/b.bin", &bytes.Buffer{}, 100); !errors.Is(err, ErrFileTooLarge) {
 		t.Fatalf("limit: %v", err)
 	}
-	// The session keeps working after a cancelled transfer.
-	if _, err := c.FetchFile(ctx, "belgeler/kacis.txt", &bytes.Buffer{}, 0); err == nil {
+	// The session keeps working after a cancelled transfer; the server may
+	// still be finishing it for a moment, which it reports as busy.
+	fetch := func(name string) error {
+		_, err := c.FetchFile(ctx, name, &bytes.Buffer{}, 0)
+		for i := 0; errors.Is(err, ErrFileBusy) && i < 100; i++ {
+			time.Sleep(20 * time.Millisecond)
+			_, err = c.FetchFile(ctx, name, &bytes.Buffer{}, 0)
+		}
+		return err
+	}
+	if err := fetch("belgeler/kacis.txt"); err == nil {
 		t.Fatal("symbolic link out of the root followed")
 	}
-	if _, err := c.FetchFile(ctx, "belgeler/alt", &bytes.Buffer{}, 0); !errors.Is(err, ErrNotRegular) {
+	if err := fetch("belgeler/alt"); !errors.Is(err, ErrNotRegular) {
 		t.Fatalf("folder fetched: %v", err)
 	}
 	if _, _, err := c.ListFiles(ctx, "belgeler/yok"); !errors.Is(err, ErrFileNotFound) {

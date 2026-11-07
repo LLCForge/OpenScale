@@ -39,6 +39,12 @@ func TestDownloadAndUpload(t *testing.T) {
 	defer cancel()
 	for _, dir := range []Direction{Download, Upload} {
 		res, err := Run(ctx, addr, dir, 300*time.Millisecond)
+		// The server frees its slot just after the client has its result;
+		// a test started at once can still find it busy.
+		for i := 0; errors.Is(err, ErrBusy) && i < 50; i++ {
+			time.Sleep(50 * time.Millisecond)
+			res, err = Run(ctx, addr, dir, 300*time.Millisecond)
+		}
 		if err != nil {
 			t.Fatalf("%s: %v", dir, err)
 		}

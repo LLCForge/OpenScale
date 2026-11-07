@@ -1,0 +1,13 @@
+# Keep LF in the repository and in every checkout, Windows included:
+# gofmt, the shell scripts and reproducible builds depend on it.
+* text=auto eol=lf
+*.ps1 text eol=crlf
+*.psm1 text eol=crlf
+*.psd1 text eol=crlf
+*.png binary
+*.ico binary
+*.icns binary
+*.syso binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
