@@ -1,0 +1,303 @@
+# Release builds. A new VERSION on main (every shipped change bumps it,
+# ADR-0193) builds the whole release with scripts/release.sh and publishes
+# it as a GitHub release tagged v<VERSION>. It can also be started by hand.
+#
+# Signing (ADR-0022) is optional and off unless the owner adds these
+# repository secrets; without them the release is published unsigned and
+# devices will NOT auto-update to it (they only install signed releases):
+#   RELEASE_ROOT_PUB            release root public key (osrelkey1:...)
+#   RELEASE_SIGNING_KEY_B64     base64 of the sealed signing key
+#   RELEASE_SIGNING_CERT_B64    base64 of the signing key certificate
+#   RELEASE_PASSPHRASE          passphrase of the sealed signing key
+# The release root key itself never goes into CI; only a revocable signing
+# key certified by it does. Keeping that key on the owner's machine and
+# signing locally remains the stricter choice (docs/surum-dogrulama.md).
+#
+# Windows Authenticode (#217) is optional too and needs these secrets; the
+# Linux runner has no signtool, so scripts/release.sh signs the .exe files
+# with osslsigncode before the release manifest hashes them:
+#   WINDOWS_CERT_PFX_B64        base64 of the code signing .pfx/.p12
+#   WINDOWS_CERT_PASSWORD       password of that .pfx
+# The repository variable WINDOWS_TIMESTAMP_URL (an RFC 3161 server) adds a
+# timestamp; without it the signature carries none.
+name: release
+
+on:
+  push:
+    branches: [main]
+    paths: [VERSION]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      skip: ${{ steps.v.outputs.skip }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Version and tag
+        id: v
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          v=$(tr -d ' \r\n' < VERSION)
+          if ! [[ "$v" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-beta\.[0-9]+)?$ ]]; then
+            echo "VERSION geçersiz: $v" >&2; exit 1
+          fi
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          if gh release view "v$v" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "v$v zaten yayımlanmış; atlanıyor."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+          if [[ "$v" == *-beta.* ]]; then echo "pre=--prerelease" >> "$GITHUB_OUTPUT"; else echo "pre=" >> "$GITHUB_OUTPUT"; fi
+
+      - uses: actions/setup-go@v6
+        if: steps.v.outputs.skip == 'false'
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - uses: actions/setup-node@v4
+        if: steps.v.outputs.skip == 'false'
+        with:
+          node-version: 22
+
+      - name: Tools (pnpm, windres)
+        if: steps.v.outputs.skip == 'false'
+        run: |
+          corepack enable
+          corepack prepare "$(node -p "require('./panel/package.json').packageManager")" --activate
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq binutils-mingw-w64-x86-64 gcc-mingw-w64-x86-64 mingw-w64-x86-64-dev
+          mkdir -p "$RUNNER_TEMP/bin"
+          ln -sf "$(command -v x86_64-w64-mingw32-windres)" "$RUNNER_TEMP/bin/windres"
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+
+      - name: Panel dependencies
+        if: steps.v.outputs.skip == 'false'
+        run: pnpm --dir panel install --frozen-lockfile
+
+      - name: Signing material (only if the owner added the secrets)
+        id: sign
+        if: steps.v.outputs.skip == 'false'
+        env:
+          ROOT_PUB: ${{ secrets.RELEASE_ROOT_PUB }}
+          KEY_B64: ${{ secrets.RELEASE_SIGNING_KEY_B64 }}
+          CERT_B64: ${{ secrets.RELEASE_SIGNING_CERT_B64 }}
+          PASSPHRASE: ${{ secrets.RELEASE_PASSPHRASE }}
+        run: |
+          umask 077
+          if [ -n "$ROOT_PUB" ] && [ -n "$KEY_B64" ] && [ -n "$CERT_B64" ] && [ -n "$PASSPHRASE" ]; then
+            d="$RUNNER_TEMP/release-keys"; mkdir -p "$d"
+            printf '%s' "$ROOT_PUB" > "$d/root.pub"
+            printf '%s' "$KEY_B64" | base64 -d > "$d/signing.key"
+            printf '%s' "$CERT_B64" | base64 -d > "$d/signing.cert"
+            printf '%s' "$PASSPHRASE" > "$d/passphrase"
+            {
+              echo "RELEASE_ROOT_PUB=$d/root.pub"
+              echo "RELEASE_SIGNING_KEY=$d/signing.key"
+              echo "RELEASE_SIGNING_CERT=$d/signing.cert"
+              echo "RELEASE_PASSPHRASE_FILE=$d/passphrase"
+            } >> "$GITHUB_ENV"
+            echo "flag=" >> "$GITHUB_OUTPUT"
+            echo "Sürüm imzalanacak."
+          else
+            echo "flag=--unsigned" >> "$GITHUB_OUTPUT"
+            echo "::warning::İmzalama gizlileri yok: sürüm imzasız yayımlanıyor; cihazlar bu sürüme otomatik güncellenmez."
+          fi
+
+      - name: Authenticode certificate (only if the owner added the secrets)
+        if: steps.v.outputs.skip == 'false'
+        env:
+          PFX_B64: ${{ secrets.WINDOWS_CERT_PFX_B64 }}
+          PFX_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
+          TS_URL: ${{ vars.WINDOWS_TIMESTAMP_URL }}
+        run: |
+          if [ -z "$PFX_B64" ] || [ -z "$PFX_PASSWORD" ]; then
+            echo "::warning::Authenticode gizlileri yok: Windows programları Authenticode imzasız yayımlanıyor (SmartScreen uyarır)."
+            exit 0
+          fi
+          umask 077
+          sudo apt-get install -y -qq osslsigncode
+          d="$RUNNER_TEMP/authenticode"; mkdir -p "$d"
+          printf '%s' "$PFX_B64" | base64 -d > "$d/cert.pfx"
+          printf '%s' "$PFX_PASSWORD" > "$d/password"
+          {
+            echo "OSSLSIGNCODE_PFX=$d/cert.pfx"
+            echo "OSSLSIGNCODE_PASSWORD_FILE=$d/password"
+            if [ -n "$TS_URL" ]; then echo "SIGNTOOL_TIMESTAMP_URL=$TS_URL"; fi
+          } >> "$GITHUB_ENV"
+          echo "Windows programları osslsigncode ile Authenticode imzalanacak."
+
+      - name: Build
+        if: steps.v.outputs.skip == 'false'
+        run: bash scripts/release.sh ${{ steps.sign.outputs.flag }}
+
+      - name: Remove signing material
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/release-keys" "$RUNNER_TEMP/authenticode"
+
+      # The macOS job builds the app from the same panel (ADR-0227).
+      - name: Keep the built panel for the macOS app
+        if: steps.v.outputs.skip == 'false'
+        uses: actions/upload-artifact@v4
+        with:
+          name: panel-dist
+          path: internal/panel/web/dist
+          include-hidden-files: true
+          retention-days: 1
+          if-no-files-found: error
+
+      - name: Publish GitHub release
+        if: steps.v.outputs.skip == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          V: ${{ steps.v.outputs.version }}
+        run: |
+          notes="$RUNNER_TEMP/notes.md"
+          awk -v v="## v$V" '$0==v{f=1;next} /^## v/{f=0} f' CHANGELOG.md > "$notes" || true
+          [ -s "$notes" ] || rm -f "$notes"
+          args=(--title "OpenScale $V" --target "$GITHUB_SHA" ${{ steps.v.outputs.pre }})
+          if [ -f "$notes" ]; then args+=(--notes-file "$notes"); else args+=(--generate-notes); fi
+          shopt -s nullglob
+          files=(dist/"$V"/*)
+          [ ${#files[@]} -gt 0 ] || { echo "dist/$V boş" >&2; exit 1; }
+          gh release create "v$V" "${args[@]}" "${files[@]}"
+
+  # macOS app (ADR-0227): OpenScale.app with the menu bar and the native
+  # panel window needs cgo with AppKit and WebKit, so it is built on a Mac
+  # after the release above exists and added to it. One universal program
+  # (arm64 + x86_64, lipo) runs on Apple silicon and Intel Macs.
+  #
+  # Apple code signing and notarization are optional and off unless the
+  # owner adds these repository secrets; without them the app is ad-hoc
+  # signed and Gatekeeper asks before the first open (the release notes
+  # say how to open it):
+  #   APPLE_CERT_P12_B64     base64 of the "Developer ID Application" .p12
+  #   APPLE_CERT_PASSWORD    password of that .p12
+  #   APPLE_ID               Apple ID for notarytool
+  #   APPLE_TEAM_ID          team identifier
+  #   APPLE_APP_PASSWORD     app-specific password for notarytool
+  macos:
+    needs: release
+    if: needs.release.outputs.skip == 'false'
+    runs-on: macos-14
+    permissions:
+      contents: write
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Panel built by the release job
+        uses: actions/download-artifact@v4
+        with:
+          name: panel-dist
+          path: internal/panel/web/dist
+
+      - name: Release root key (only if the owner added it)
+        env:
+          ROOT_PUB: ${{ secrets.RELEASE_ROOT_PUB }}
+        run: |
+          if [ -n "$ROOT_PUB" ]; then
+            d="$RUNNER_TEMP/release-keys"; mkdir -p "$d"
+            printf '%s' "$ROOT_PUB" > "$d/root.pub"
+            echo "RELEASE_ROOT_PUB=$d/root.pub" >> "$GITHUB_ENV"
+          fi
+
+      - name: Apple signing identity (only if the owner added the secrets)
+        env:
+          P12_B64: ${{ secrets.APPLE_CERT_P12_B64 }}
+          P12_PASSWORD: ${{ secrets.APPLE_CERT_PASSWORD }}
+        run: |
+          if [ -z "$P12_B64" ] || [ -z "$P12_PASSWORD" ]; then
+            echo "::warning::Apple imza gizlileri yok: OpenScale.app ad-hoc imzalı ve noter onaysız yayımlanıyor."
+            exit 0
+          fi
+          umask 077
+          kc="$RUNNER_TEMP/openscale-sign.keychain-db"
+          kcpass=$(openssl rand -hex 24)
+          security create-keychain -p "$kcpass" "$kc"
+          security set-keychain-settings -lut 3600 "$kc"
+          security unlock-keychain -p "$kcpass" "$kc"
+          printf '%s' "$P12_B64" | base64 --decode > "$RUNNER_TEMP/sign.p12"
+          security import "$RUNNER_TEMP/sign.p12" -k "$kc" -P "$P12_PASSWORD" -T /usr/bin/codesign
+          rm -f "$RUNNER_TEMP/sign.p12"
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$kcpass" "$kc" >/dev/null
+          security list-keychains -d user -s "$kc" $(security list-keychains -d user | tr -d '"')
+          id=$(security find-identity -v -p codesigning "$kc" | awk -F'"' '/Developer ID Application/ {print $2; exit}')
+          if [ -z "$id" ]; then
+            echo "::error::.p12 içinde 'Developer ID Application' kimliği yok"
+            exit 1
+          fi
+          {
+            echo "APPLE_SIGN_IDENTITY=$id"
+            echo "OPENSCALE_KEYCHAIN=$kc"
+          } >> "$GITHUB_ENV"
+
+      - name: Build OpenScale.app, zip and dmg
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+        run: bash scripts/macos-app.sh
+
+      - name: Remove signing material
+        if: always()
+        run: |
+          if [ -n "${OPENSCALE_KEYCHAIN:-}" ]; then security delete-keychain "$OPENSCALE_KEYCHAIN" || true; fi
+          rm -rf "$RUNNER_TEMP/release-keys" "$RUNNER_TEMP/sign.p12"
+
+      - name: Add to the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          V: ${{ needs.release.outputs.version }}
+        run: |
+          out="dist/$V/macos"
+          gh release upload "v$V" --repo "$GITHUB_REPOSITORY" --clobber \
+            "$out/openscale-$V-macos.dmg" "$out/openscale-$V-macos.zip" "$out/openscale-$V-macos.sha256"
+          # An unsigned app: say how to open it, once.
+          if grep -q 'signed=0' "$out/.signed"; then
+            gh release view "v$V" --repo "$GITHUB_REPOSITORY" --json body --jq .body > "$RUNNER_TEMP/notes.md"
+            if ! grep -q -e 'openscale-macos-gatekeeper' -e 'Yine de Aç' "$RUNNER_TEMP/notes.md"; then
+              cat >> "$RUNNER_TEMP/notes.md" <<'NOTE'
+
+          <!-- openscale-macos-gatekeeper -->
+          ### macOS: imzasız uygulama
+
+          Bu sürümün `OpenScale.app` uygulaması Apple Developer ID ile imzalı ve noter onaylı değil; ilk açılışta Gatekeeper "geliştirici doğrulanamadı" uyarısı verir. Dosyanın SHA-256 özetini `openscale-<sürüm>-macos.sha256` ile karşılaştırdıktan sonra:
+
+          - macOS 14 ve öncesi: Uygulamalar klasöründe OpenScale'e **sağ tık > Aç**, açılan pencerede yine **Aç**.
+          - macOS 15 ve sonrası: uygulamayı bir kez açmayı deneyin, sonra **Sistem Ayarları > Gizlilik ve Güvenlik** altında **Yine de Aç**.
+          NOTE
+              gh release edit "v$V" --repo "$GITHUB_REPOSITORY" --notes-file "$RUNNER_TEMP/notes.md"
+            fi
+          fi

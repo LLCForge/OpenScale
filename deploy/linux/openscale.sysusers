@@ -1,0 +1,4 @@
+# systemd-sysusers(8) entry for the coordinator's service user (used by the
+# Arch and Fedora recipes; the .deb and pkgrpm packages create it in their
+# maintainer scripts).
+u openscale - "OpenScale coordinator" /var/lib/openscale /usr/sbin/nologin

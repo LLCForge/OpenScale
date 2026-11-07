@@ -1,0 +1,21 @@
+# /etc/default/openscale-device
+#
+# Environment for openscale-device.service, read through the drop-in
+# 50-openscale-upstream.conf (ADR-0142, docs/mullvad-cikis.md). Every
+# OPENSCALE_<FLAG> variable sets the "openscale up" flag of the same name.
+#
+# Install:
+#   install -m 0644 openscale-device.default /etc/default/openscale-device
+#   install -d -m 0755 /etc/systemd/system/openscale-device.service.d
+#   install -m 0644 50-openscale-upstream.conf /etc/systemd/system/openscale-device.service.d/
+#   systemctl daemon-reload && systemctl restart openscale-device
+
+# Upstream exit: members' internet traffic leaves through this imported
+# provider profile (see "openscale exit-node upstream list"). The profile
+# must exist, otherwise the tunnel does not start. Leave it commented out
+# to keep the choice made with "openscale exit-node upstream use".
+#OPENSCALE_EXIT_UPSTREAM=se-got
+
+# Members' DNS goes to the provider's resolver through the upstream tunnel
+# while an upstream is in use; this setting then has no effect.
+#OPENSCALE_EXIT_DNS_UPSTREAM=

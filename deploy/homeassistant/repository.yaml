@@ -1,0 +1,8 @@
+# Home Assistant add-on repository of OpenScale (#890,
+# docs/homeassistant.md). Publish this directory (after
+# deploy/homeassistant/prepare.sh copied the verified programs into it) as
+# a Git repository the Supervisor can read, and add its address under
+# Settings > Add-ons > Add-on Store > Repositories.
+name: OpenScale
+url: https://example.com/openscale/homeassistant
+maintainer: OpenScale <root@localhost>

@@ -1,0 +1,13 @@
+#!/bin/sh
+# %pre of the openscale RPM package (cmd/pkgrpm): creates the system user
+# the coordinator unit runs as. $1 is 1 on install, 2 or more on upgrade.
+set -e
+
+if ! getent passwd openscale >/dev/null 2>&1; then
+	nologin=/usr/sbin/nologin
+	[ -x "$nologin" ] || nologin=/sbin/nologin
+	useradd --system --home-dir /var/lib/openscale --no-create-home \
+		--shell "$nologin" openscale
+fi
+
+exit 0

@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- P27. Kamera: QR ile kayıt (#182); görüntü cihazdan çıkmaz. -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera.any" android:required="false" />
+    <!-- Biyometrik kilit (#177). -->
+    <uses-permission android:name="android.permission.USE_BIOMETRIC" />
+    <!-- Wi-Fi adı (#179): yalnızca sahip SSID kuralı yazarsa istenir;
+         Android 10+ adı konum izni olmadan vermez. Ad cihazdan çıkmaz. -->
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+
+    <!-- P08. NFC ile davet aktarımı (#470): okuyucu kipi ve HCE; ikisi de
+         isteğe bağlı donanım. -->
+    <uses-permission android:name="android.permission.NFC" />
+    <uses-feature android:name="android.hardware.nfc" android:required="false" />
+    <uses-feature android:name="android.hardware.nfc.hce" android:required="false" />
+    <!-- Android TV arayüzü (#476): dokunmatik ekran ve Leanback zorunlu değil. -->
+    <uses-feature android:name="android.software.leanback" android:required="false" />
+    <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
+
+    <!-- Uygulama bazlı bölme (F-049): QUERY_ALL_PACKAGES yerine yalnızca
+         başlatıcıda görünen uygulamalar. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+    </queries>
+
+    <!-- Yedekleme kapalı: cihaz anahtarı Keystore'a bağlıdır ve başka cihaza
+         taşınamaz; ağ belgesi de yedeğe girmez (ADR-0101, #176). -->
+    <application
+        android:allowBackup="false"
+        android:banner="@drawable/tv_banner"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="false"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@android:style/Theme.Material.Light"
+        android:usesCleartextTraffic="false">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTop">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Kesme isteği (#177, bulgu 10): bildirim, kutucuk ve bileşen
+             MainActivity'ye yalnızca bu dışa kapalı takma addan ulaşır;
+             başka bir uygulama bunu başlatamaz. -->
+        <activity-alias
+            android:name=".DisconnectRequest"
+            android:exported="false"
+            android:targetActivity=".MainActivity" />
+
+        <!-- QR okuyucu (#182): Camera2, dikey ekran. -->
+        <activity
+            android:name=".QrScanActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />
+
+        <!-- Android TV arayüzü (#476, P08): yalnızca TV başlatıcısında görünür. -->
+        <activity
+            android:name=".TvActivity"
+            android:exported="true"
+            android:theme="@android:style/Theme.Material.NoActionBar">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- NFC davet etiketi (#470, P08): varsayılan kapalı; yalnızca paylaşım
+             penceresi açıkken uygulama kendisi açar. Yalnızca sistem bağlanabilir. -->
+        <service
+            android:name=".InviteHceService"
+            android:enabled="false"
+            android:exported="true"
+            android:permission="android.permission.BIND_NFC_SERVICE">
+            <intent-filter>
+                <action android:name="android.nfc.cardemulation.action.HOST_APDU_SERVICE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.nfc.cardemulation.host_apdu_service"
+                android:resource="@xml/apduservice" />
+        </service>
+
+        <!-- Ana ekran bileşeni (#472, P08). -->
+        <receiver
+            android:name=".StatusWidget"
+            android:exported="true"
+            android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_status_info" />
+        </receiver>
+
+        <!-- Hızlı ayar kutucuğu (P27); API 24+, yalnızca sistem bağlanabilir. -->
+        <service
+            android:name=".OpenScaleTileService"
+            android:exported="true"
+            android:icon="@android:drawable/ic_lock_lock"
+            android:label="@string/app_name"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
+        <!-- Her zaman açık VPN (#175): sistem bu servisi açılışta ve
+             kapandığında kendisi başlatır; "VPN olmadan bağlantıları engelle"
+             açıkken tünel yokken trafik sistemce engellenir. -->
+        <service
+            android:name=".OpenScaleVpnService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse"
+            android:permission="android.permission.BIND_VPN_SERVICE">
+            <intent-filter>
+                <action android:name="android.net.VpnService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.net.VpnService.SUPPORTS_ALWAYS_ON"
+                android:value="true" />
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="vpn" />
+        </service>
+    </application>
+</manifest>

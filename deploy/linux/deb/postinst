@@ -1,0 +1,62 @@
+#!/bin/sh
+# postinst of the openscale Debian package (cmd/pkgdeb). It creates the
+# service user and state directories and reloads systemd. It never enables
+# or starts the coordinator or device unit: an unjoined one must not run.
+# Only the automatic update trigger follows an enabled device (ADR-0225).
+set -e
+
+UNITS="openscale-coordinator.service openscale-device.service"
+
+case "$1" in
+configure)
+	if ! getent passwd openscale >/dev/null 2>&1; then
+		useradd --system --home-dir /var/lib/openscale --no-create-home \
+			--shell /usr/sbin/nologin openscale
+	fi
+	# The coordinator runs as openscale; the device runs as root but without
+	# CAP_DAC_OVERRIDE, so it cannot enter a directory owned by openscale.
+	# The parent is therefore root-owned and traversable, and each service
+	# owns only its own 0700 subdirectory.
+	install -d -m 0755 -o root -g root /var/lib/openscale
+	install -d -m 0700 -o openscale -g openscale /var/lib/openscale/coordinator
+	install -d -m 0700 -o root -g root /var/lib/openscale/device
+
+	for u in $UNITS; do
+		if [ -f "/etc/systemd/system/$u" ]; then
+			echo "UYARI: /etc/systemd/system/$u elle kurulmuş ve paketin birimini gölgeliyor" >&2
+			echo "       (/usr/local/bin/openscale çalışır). Pakete geçmek için:" >&2
+			echo "       rm /etc/systemd/system/$u && systemctl daemon-reload" >&2
+		fi
+	done
+
+	if [ -d /run/systemd/system ]; then
+		systemctl daemon-reload >/dev/null 2>&1 || true
+		# ADR-0225: an enabled device also gets the automatic update trigger
+		# (it only starts the verifying installer when the device asks;
+		# "openscale update auto off" turns automatic updates off).
+		if systemctl is-enabled --quiet openscale-device.service 2>/dev/null; then
+			systemctl enable --now openscale-autoupdate.path >/dev/null 2>&1 || true
+		fi
+		if [ -n "$2" ]; then
+			# Upgrade: restart only the units that were already running.
+			for u in $UNITS; do
+				systemctl try-restart "$u" >/dev/null 2>&1 || true
+			done
+		fi
+	fi
+
+	if [ -z "$2" ]; then
+		echo "OpenScale kuruldu. Birimler kapalı; önce ağa katılın:"
+		echo "  koordinatör: runuser -u openscale -- openscale coordinator keygen --state-dir /var/lib/openscale/coordinator"
+		echo "  cihaz:       openscale join --state-dir /var/lib/openscale/device --bundle @paket.txt --root-fingerprint <parmak izi>"
+		echo "Sonra: systemctl enable --now openscale-coordinator (veya openscale-device)"
+	fi
+	;;
+abort-upgrade | abort-remove | abort-deconfigure) ;;
+*)
+	echo "postinst: bilinmeyen argüman '$1'" >&2
+	exit 1
+	;;
+esac
+
+exit 0

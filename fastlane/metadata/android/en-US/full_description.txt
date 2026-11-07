@@ -1,0 +1,24 @@
+OpenScale is a personal WireGuard mesh VPN that connects the devices of a single owner. There is no cloud account, no telemetry, no ads and no Google service.
+
+<b>Trust model</b>
+<ul>
+<li>The network is signed by a root key that stays on the owner's computer. The coordinator server cannot change the network document, add or remove devices.</li>
+<li>Device keys are encrypted with the Android Keystore (in StrongBox when available) and are excluded from backups.</li>
+<li>Enrollment requests and invite codes travel as QR codes; the QR decoder is built in and camera frames never leave the device.</li>
+</ul>
+
+<b>Features</b>
+<ul>
+<li>Kill switch through Always-on VPN and "Block connections without VPN"</li>
+<li>Exit node: internet traffic leaves through a device at home</li>
+<li>Mobile data and Wi-Fi policy: pick the exit node by network</li>
+<li>Per-app split tunnel</li>
+<li>Biometric lock: disconnecting and changing settings require authentication</li>
+<li>Lost device mode: once the owner revokes the phone, the app deletes its keys</li>
+<li>Battery friendly: no push service, no wake locks</li>
+<li>Quick Settings tile and status in the notification</li>
+</ul>
+
+The app does not work alone: it needs the owner's OpenScale network (desktop program and coordinator).
+
+The APK is signed with the owner's own key; the SHA-256 digest of the signing certificate is shown on the main screen and must match the value the owner published.

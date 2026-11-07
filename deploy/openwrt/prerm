@@ -1,0 +1,7 @@
+#!/bin/sh
+# Stop and disable before removal; the device identity in
+# /etc/openscale stays (remove it yourself to leave no trace).
+[ -n "${IPKG_INSTROOT}" ] && exit 0
+/etc/init.d/openscale stop
+/etc/init.d/openscale disable
+exit 0

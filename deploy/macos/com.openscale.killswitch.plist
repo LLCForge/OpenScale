@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- openscale killswitch boot: OpenScale kill switch geri yükleyicisi (ADR-0100) -->
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>com.openscale.killswitch</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/usr/local/bin/openscale</string>
+		<string>killswitch</string>
+		<string>restore</string>
+	</array>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>UserName</key>
+	<string>root</string>
+	<key>GroupName</key>
+	<string>wheel</string>
+	<key>ProcessType</key>
+	<string>Standard</string>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>PATH</key>
+		<string>/usr/bin:/bin:/usr/sbin:/sbin</string>
+	</dict>
+</dict>
+</plist>

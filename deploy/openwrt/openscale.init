@@ -1,0 +1,58 @@
+#!/bin/sh /etc/rc.common
+# OpenScale device on OpenWrt (#446, ADR-0162): procd service, configured
+# with UCI (/etc/config/openscale), no LuCI needed. The router becomes a
+# subnet router or exit node only when the signed network document gives
+# it that role; this script only starts the tunnel.
+
+START=95
+STOP=10
+USE_PROCD=1
+
+PROG=/usr/bin/openscale
+
+start_service() {
+	config_load openscale
+	local enabled state_dir listen_port iface memory_profile
+	config_get_bool enabled main enabled 0
+	config_get state_dir main state_dir /etc/openscale/device
+	config_get listen_port main listen_port 41821
+	config_get iface main interface OpenScale
+	config_get memory_profile main memory_profile low
+
+	[ "$enabled" = 1 ] || {
+		echo "openscale: /etc/config/openscale içinde enabled=0; önce ağa katılın, sonra: uci set openscale.main.enabled=1; uci commit openscale" >&2
+		return 0
+	}
+	[ -f "$state_dir/anchor.json" ] || {
+		echo "openscale: $state_dir bu cihazın üyeliğini içermiyor; önce: openscale join --state-dir $state_dir <katılım paketi>" >&2
+		return 0
+	}
+	case "$listen_port" in
+	'' | *[!0-9]*) echo "openscale: listen_port geçersiz: $listen_port" >&2; return 1 ;;
+	esac
+	case "$memory_profile" in
+	low | default) ;;
+	*) echo "openscale: memory_profile low veya default olmalı" >&2; return 1 ;;
+	esac
+
+	procd_open_instance
+	procd_set_param command "$PROG" up --state-dir "$state_dir" --listen-port "$listen_port" --interface "$iface"
+	config_list_foreach main extra_arg append_extra_arg
+	# #392: the low memory profile fits small routers (32 MiB target).
+	procd_set_param env OPENSCALE_MEMORY_PROFILE="$memory_profile"
+	procd_set_param respawn 3600 5 0
+	procd_set_param stdout 1
+	procd_set_param stderr 1
+	procd_close_instance
+}
+
+append_extra_arg() {
+	case "$1" in
+	--state-dir* | -state-dir*) echo "openscale: extra_arg ile --state-dir verilmez" >&2 ;;
+	*) procd_append_param command "$1" ;;
+	esac
+}
+
+service_triggers() {
+	procd_add_reload_trigger openscale
+}

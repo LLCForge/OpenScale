@@ -1,0 +1,23 @@
+{
+  "name": "os-openscale",
+  "origin": "net/openscale-plugin",
+  "version": "@VERSION@",
+  "comment": "OpenScale WireGuard mesh VPN device (settings and service)",
+  "desc": "OPNsense settings page and service control for the OpenScale device. Needs the openscale package (deploy/pfsense). Built locally with deploy/opnsense/build-plugin.sh; not tested on a real firewall.",
+  "maintainer": "root@localhost",
+  "www": "https://example.com/openscale",
+  "abi": "@ABI@",
+  "arch": "@ARCH@",
+  "prefix": "/usr/local",
+  "licenselogic": "single",
+  "licenses": ["MIT"],
+  "categories": ["net", "security"],
+  "deps": {
+    "openscale": {"origin": "net/openscale", "version": "@VERSION@"}
+  },
+  "scripts": {
+    "post-install": "/usr/local/sbin/configctl template reload OPNsense/OpenScale >/dev/null 2>&1 || true\n/usr/sbin/service configd restart >/dev/null 2>&1 || true",
+    "pre-deinstall": "/usr/local/etc/rc.d/openscale onestop >/dev/null 2>&1 || true",
+    "post-deinstall": "rm -f /etc/rc.conf.d/openscale\n/usr/sbin/service configd restart >/dev/null 2>&1 || true"
+  }
+}

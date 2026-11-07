@@ -1,0 +1,15 @@
+#!/bin/sh
+# %postun of the openscale RPM package. Keys and network state under
+# /var/lib/openscale are never deleted automatically: losing a coordinator
+# or device key is not recoverable. $1 is 0 on removal.
+set -e
+
+if [ -d /run/systemd/system ]; then
+	systemctl daemon-reload >/dev/null 2>&1 || true
+fi
+if [ "${1:-0}" -eq 0 ]; then
+	echo "Anahtarlar ve durum /var/lib/openscale altında bırakıldı; gerekmiyorsa elle silin." >&2
+	echo "openscale kullanıcısı da bırakıldı: userdel openscale" >&2
+fi
+
+exit 0

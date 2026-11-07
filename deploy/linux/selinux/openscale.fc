@@ -1,0 +1,9 @@
+/usr/bin/openscale			--	gen_context(system_u:object_r:openscale_exec_t,s0)
+/usr/local/bin/openscale		--	gen_context(system_u:object_r:openscale_exec_t,s0)
+/var/lib/openscale/bin/openscale	--	gen_context(system_u:object_r:openscale_exec_t,s0)
+
+/etc/openscale(/.*)?				gen_context(system_u:object_r:openscale_etc_t,s0)
+
+/var/lib/openscale(/.*)?			gen_context(system_u:object_r:openscale_var_lib_t,s0)
+/var/lib/openscale/device(/.*)?			gen_context(system_u:object_r:openscale_device_var_lib_t,s0)
+/var/lib/openscale/coordinator(/.*)?		gen_context(system_u:object_r:openscale_coordinator_var_lib_t,s0)

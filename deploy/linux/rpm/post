@@ -1,0 +1,42 @@
+#!/bin/sh
+# %post of the openscale RPM package. Same policy as the Debian package
+# (deploy/linux/deb/postinst): state directories are created and systemd
+# is reloaded, but no unit is enabled or started; an unjoined coordinator
+# or device must not run. $1 is 1 on install, 2 or more on upgrade.
+set -e
+
+UNITS="openscale-coordinator.service openscale-device.service"
+
+# The coordinator runs as openscale; the device runs as root but without
+# CAP_DAC_OVERRIDE, so the parent is root-owned and traversable and each
+# service owns only its own 0700 subdirectory.
+install -d -m 0755 -o root -g root /var/lib/openscale
+install -d -m 0700 -o openscale -g openscale /var/lib/openscale/coordinator
+install -d -m 0700 -o root -g root /var/lib/openscale/device
+
+for u in $UNITS; do
+	if [ -f "/etc/systemd/system/$u" ]; then
+		echo "UYARI: /etc/systemd/system/$u elle kurulmuş ve paketin birimini gölgeliyor" >&2
+		echo "       (/usr/local/bin/openscale çalışır). Pakete geçmek için:" >&2
+		echo "       rm /etc/systemd/system/$u && systemctl daemon-reload" >&2
+	fi
+done
+
+if [ -d /run/systemd/system ]; then
+	systemctl daemon-reload >/dev/null 2>&1 || true
+	if [ "${1:-1}" -ge 2 ]; then
+		# Upgrade: restart only the units that were already running.
+		for u in $UNITS; do
+			systemctl try-restart "$u" >/dev/null 2>&1 || true
+		done
+	fi
+fi
+
+if [ "${1:-1}" -eq 1 ]; then
+	echo "OpenScale kuruldu. Birimler kapalı; önce ağa katılın:"
+	echo "  koordinatör: runuser -u openscale -- openscale coordinator keygen --state-dir /var/lib/openscale/coordinator"
+	echo "  cihaz:       openscale join --state-dir /var/lib/openscale/device --bundle @paket.txt --root-fingerprint <parmak izi>"
+	echo "Sonra: systemctl enable --now openscale-coordinator (veya openscale-device)"
+fi
+
+exit 0

@@ -1,0 +1,31 @@
+#!/bin/sh
+# Bir sonraki OpenScale sürümünü hesaplar ve VERSION dosyasına yazar
+# (ADR-0193): ara sürüm 0-9 arasında döner (x.9 -> (x+1).0), yama sürümü
+# düzeltmeler içindir, beta.N önsürümdür.
+#
+#   scripts/bump-version minor|patch|beta|release [--dry-run]
+set -eu
+
+root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+kind=${1:-}
+case "$kind" in
+  minor|patch|beta|release) ;;
+  *)
+    echo "kullanım: scripts/bump-version minor|patch|beta|release [--dry-run]" >&2
+    exit 2
+    ;;
+esac
+
+write=-w
+if [ "${2:-}" = "--dry-run" ]; then
+  write=
+fi
+
+cd "$root"
+old=$(tr -d ' \r\n' < VERSION)
+new=$(go run ./cmd/bumpversion -file VERSION $write "$kind")
+if [ -n "$write" ]; then
+  echo "VERSION: $old -> $new"
+else
+  echo "VERSION (yazılmadı): $old -> $new"
+fi

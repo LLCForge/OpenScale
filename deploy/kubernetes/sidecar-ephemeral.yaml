@@ -1,0 +1,83 @@
+# OpenScale sidecar with memory-only state (#292, ADR-0092;
+# docs/kubernetes.md). The device keys live in an in-memory emptyDir and
+# are gone when the pod goes: every new pod is a new device that joins with
+# the invite and must be approved again in the panel. Use it for short-lived
+# workloads; give the invite a short lifetime and revoke stale devices.
+#
+# The entry point refuses to start if /var/lib/openscale is not
+# memory-backed, so a key is never written to a node disk by mistake.
+#
+#   kubectl -n openscale-demo create secret generic openscale-invite --from-file=invite=./invite.txt
+#   kubectl apply -f deploy/kubernetes/sidecar-ephemeral.yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: openscale-demo
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: job-runner
+  namespace: openscale-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: job-runner}
+  template:
+    metadata:
+      labels: {app: job-runner}
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        seccompProfile: {type: RuntimeDefault}
+      initContainers:
+        - name: openscale
+          image: openscale:local
+          imagePullPolicy: IfNotPresent
+          restartPolicy: Always
+          env:
+            - {name: OPENSCALE_STATE, value: memory}
+            - {name: OPENSCALE_LISTEN_PORT, value: "41821"}
+            - name: OPENSCALE_HOSTNAME
+              valueFrom: {fieldRef: {fieldPath: metadata.name}}
+          securityContext:
+            runAsUser: 0
+            runAsNonRoot: false
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+              add: [NET_ADMIN]
+          resources:
+            requests: {cpu: 10m, memory: 32Mi}
+            limits: {memory: 256Mi}
+          volumeMounts:
+            - {name: state, mountPath: /var/lib/openscale}
+            - {name: tun, mountPath: /dev/net/tun}
+            - {name: tmp, mountPath: /tmp}
+            - {name: invite, mountPath: /run/secrets/openscale-invite, subPath: invite, readOnly: true}
+      containers:
+        - name: app
+          image: nginxinc/nginx-unprivileged:1.27-alpine
+          ports:
+            - {containerPort: 8080, name: http}
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          volumeMounts:
+            - {name: app-tmp, mountPath: /tmp}
+      volumes:
+        - name: state
+          emptyDir: {medium: Memory, sizeLimit: 8Mi}
+        - name: tun
+          hostPath: {path: /dev/net/tun, type: CharDevice}
+        - name: tmp
+          emptyDir: {medium: Memory, sizeLimit: 16Mi}
+        - name: app-tmp
+          emptyDir: {sizeLimit: 64Mi}
+        - name: invite
+          secret:
+            secretName: openscale-invite
+            defaultMode: 0400

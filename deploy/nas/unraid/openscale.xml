@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<!--
+  Unraid Docker template for OpenScale (#319, docs/nas.md). Copy to
+  /boot/config/plugins/dockerMan/templates-user/my-openscale.xml, then
+  Docker > Add Container > Template: openscale. Load the image first:
+  docker load -i openscale-<version>.oci.tar (built with
+  deploy/docker/Dockerfile on the owner's computer; there is no registry).
+-->
+<Container version="2">
+  <Name>openscale</Name>
+  <Repository>openscale:local</Repository>
+  <Network>host</Network>
+  <Privileged>false</Privileged>
+  <Overview>OpenScale device: personal, single-owner WireGuard mesh VPN. Needs only NET_ADMIN and /dev/net/tun. The approval code for the invite appears in the container log.</Overview>
+  <Category>Network:VPN</Category>
+  <ExtraParams>--cap-drop=ALL --cap-add=NET_ADMIN --device=/dev/net/tun --security-opt=no-new-privileges --read-only --tmpfs=/tmp:mode=1777,size=16m --restart=unless-stopped</ExtraParams>
+  <Config Name="State" Target="/var/lib/openscale" Default="/mnt/user/appdata/openscale/state" Mode="rw" Description="Device keys and the signed network document (keep private)." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/openscale/state</Config>
+  <Config Name="Invite" Target="/run/secrets/openscale-invite" Default="/mnt/user/appdata/openscale/invite.txt" Mode="ro" Description="Invite code from the panel, used once to join." Type="Path" Display="always" Required="false" Mask="false">/mnt/user/appdata/openscale/invite.txt</Config>
+  <Config Name="State mode" Target="OPENSCALE_STATE" Default="file|memory" Mode="" Description="file keeps the identity; memory needs a tmpfs at /var/lib/openscale." Type="Variable" Display="advanced" Required="true" Mask="false">file</Config>
+  <Config Name="Listen port" Target="OPENSCALE_LISTEN_PORT" Default="41821" Mode="" Description="WireGuard UDP port." Type="Variable" Display="always" Required="true" Mask="false">41821</Config>
+  <Config Name="Device name" Target="OPENSCALE_HOSTNAME" Default="unraid" Mode="" Description="Suggested device name in the network." Type="Variable" Display="always" Required="false" Mask="false">unraid</Config>
+</Container>

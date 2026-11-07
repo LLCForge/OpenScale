@@ -1,0 +1,7 @@
+# systemd-tmpfiles(8) entries: the parent stays root-owned and traversable;
+# the coordinator (user openscale) and the device (root without
+# CAP_DAC_OVERRIDE) each own only their own 0700 subdirectory. Keys are
+# never removed (no age field).
+d /var/lib/openscale 0755 root root -
+d /var/lib/openscale/coordinator 0700 openscale openscale -
+d /var/lib/openscale/device 0700 root root -

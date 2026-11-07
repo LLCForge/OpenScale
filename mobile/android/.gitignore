@@ -1,0 +1,10 @@
+.gradle/
+build/
+app/build/
+app/libs/*.aar
+app/libs/*.jar
+local.properties
+*.keystore
+*.jks
+android-signing.properties
+keystore.properties

@@ -1,0 +1,29 @@
+# OpenScale on Synology DSM 7.2+ with Container Manager (#319,
+# docs/nas.md). Create a Project in Container Manager with the path
+# /volume1/docker/openscale and this file as compose.yaml. Load the image
+# first (Container Manager > Image > Import > openscale-<version>.oci.tar,
+# built on the owner's computer with deploy/docker/Dockerfile).
+#
+# network_mode: host puts the tunnel on the NAS itself, so every NAS
+# service (DSM, SMB, Photos) is reachable over the private network and
+# nothing else on the LAN changes. The state stays in ./state on the NAS
+# volume; the invite code is read once from ./invite.txt.
+services:
+  openscale:
+    image: openscale:local
+    container_name: openscale
+    restart: unless-stopped
+    network_mode: host
+    cap_drop: [ALL]
+    cap_add: [NET_ADMIN]
+    devices: ["/dev/net/tun:/dev/net/tun"]
+    security_opt: ["no-new-privileges:true"]
+    read_only: true
+    tmpfs: ["/tmp:mode=1777,size=16m"]
+    environment:
+      OPENSCALE_STATE: file
+      OPENSCALE_LISTEN_PORT: "41821"
+      OPENSCALE_HOSTNAME: nas
+    volumes:
+      - ./state:/var/lib/openscale
+      - ./invite.txt:/run/secrets/openscale-invite:ro

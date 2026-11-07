@@ -1,0 +1,13 @@
+#!/bin/sh
+# %preun of the openscale RPM package: on removal ($1 = 0) stop and disable
+# the units. On upgrade ($1 >= 1) nothing is stopped; %post of the new
+# package restarts running units.
+set -e
+
+if [ "${1:-0}" -eq 0 ] && [ -d /run/systemd/system ]; then
+	for u in openscale-coordinator.service openscale-device.service; do
+		systemctl disable --now "$u" >/dev/null 2>&1 || true
+	done
+fi
+
+exit 0

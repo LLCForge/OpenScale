@@ -1,0 +1,82 @@
+# OpenScale coordinator (ADR-0005, ADR-0013). It only needs one UDP port
+# and its state directory, so everything else is locked away.
+[Unit]
+Description=OpenScale coordinator
+After=network-online.target time-sync.target
+Wants=network-online.target
+
+[Service]
+# READY=1 follows once the WireGuard device is up (F-149).
+Type=notify
+NotifyAccess=main
+User=openscale
+Group=openscale
+# Optional settings, e.g. the TCP transport for devices whose UDP is
+# blocked (ADR-0032): OPENSCALE_TCP_LISTEN=:443 (see docs/sunucu-kurulumu.md).
+EnvironmentFile=-/etc/default/openscale-coordinator
+ExecStart=/usr/local/bin/openscale coordinator run --state-dir /var/lib/openscale/coordinator --listen-port 41820
+Restart=on-failure
+RestartSec=5
+# Only the coordinator's own subdirectory belongs to the openscale user; the
+# parent stays root-owned so the device service (root without
+# CAP_DAC_OVERRIDE) can reach /var/lib/openscale/device on the same host.
+StateDirectory=openscale/coordinator
+StateDirectoryMode=0700
+UMask=0077
+LimitNOFILE=4096
+# No core dumps (#638, ADR-0184): the process also clears its dumpable flag;
+# this keeps the kernel from writing one even before that.
+LimitCORE=0
+# Resource limits (#484): under attack the coordinator cannot starve the
+# other services on the same server. GOMEMLIMIT lets the Go runtime collect
+# garbage before the hard limit; the internal queues (uploads, pending
+# enrollments, TCP connections, relay buckets) are bounded in the program.
+MemoryHigh=384M
+MemoryMax=512M
+Environment=GOMEMLIMIT=320MiB
+TasksMax=256
+CPUWeight=50
+IOWeight=50
+
+# Hardening: no privileges, no writable system, no devices, no kernel access.
+# The only capability is binding a port below 1024, used solely when the
+# TCP transport listens on :443; without OPENSCALE_TCP_LISTEN it is unused.
+NoNewPrivileges=yes
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+DevicePolicy=closed
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectProc=invisible
+# ProcSubset=pid is not set: the system report (devices page: RAM, uptime,
+# CPU) reads /proc/meminfo, /proc/uptime and /proc/cpuinfo. Other processes
+# stay hidden through ProtectProc=invisible.
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX AF_NETLINK
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+RemoveIPC=yes
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+# The coordinator restricts its own file access with Landlock once WireGuard
+# is up (#147, ADR-0111): it may only read and write its state directory.
+# These calls are not in @system-service; a filtered call returns EPERM
+# instead of killing the process, so an older systemd or kernel just
+# leaves the sandbox off (logged). OPENSCALE_NO_LANDLOCK=1 in the
+# environment file turns it off.
+SystemCallFilter=landlock_create_ruleset landlock_add_rule landlock_restrict_self
+SystemCallErrorNumber=EPERM
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,30 @@
+/*
+ * Screen sharing guard (#689, ADR-0209). While a sharing or recording app
+ * runs, secrets on the page are blurred: keys, fingerprints, invite codes,
+ * recovery words and addresses (the same set presentation mode blurs:
+ * mono text, code and data-sensitive), data-secret and password fields. Hovering or focusing
+ * an element shows it at once and hides it again ten seconds after the
+ * pointer leaves; the transition delay carries the ten seconds, so no
+ * script runs per element.
+ */
+:root[data-secrets-hidden] :is(.font-mono, code, kbd, pre, samp, [data-sensitive], [data-secret], input[type="password"]):not([data-secret-exempt], [data-presentation-safe]) {
+  filter: blur(7px);
+  transition: filter 160ms cubic-bezier(0.16, 1, 0.3, 1) 10s;
+}
+
+:root[data-secrets-hidden] :is(.font-mono, code, kbd, pre, samp, [data-sensitive], [data-secret], input[type="password"]):not([data-secret-exempt], [data-presentation-safe]):is(:hover, :focus, :focus-within) {
+  filter: none;
+  transition-delay: 0s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root[data-secrets-hidden] :is(.font-mono, code, kbd, pre, samp, [data-sensitive], [data-secret], input[type="password"]):not([data-secret-exempt], [data-presentation-safe]) {
+    transition-duration: 0s;
+  }
+}
+
+/* Idle lock: the page behind the lock dialog is blurred and inert. */
+.panel-lock-backdrop {
+  backdrop-filter: blur(18px) saturate(0.6);
+  -webkit-backdrop-filter: blur(18px) saturate(0.6);
+}

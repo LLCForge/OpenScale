@@ -1,0 +1,26 @@
+<form>
+    <field>
+        <id>openscale.general.enabled</id>
+        <label>Etkin</label>
+        <type>checkbox</type>
+        <help>Servisi açılışta ve kaydettiğinizde başlatır. Cihaz önce konsoldan ağa katılmalıdır: openscale invite-join --state-dir /var/db/openscale --code @davet.txt</help>
+    </field>
+    <field>
+        <id>openscale.general.listen_port</id>
+        <label>UDP portu</label>
+        <type>text</type>
+        <help>WireGuard portu. WAN'da bu UDP portuna izin veren bir kural ekleyin.</help>
+    </field>
+    <field>
+        <id>openscale.general.interface</id>
+        <label>Arayüz adı</label>
+        <type>text</type>
+        <help>Tünel arayüzü (harf ve rakam, en fazla 15 karakter). Kural yazmak için Arayüzler > Atamalar'dan atayın.</help>
+    </field>
+    <field>
+        <id>openscale.general.memory_profile</id>
+        <label>Bellek profili</label>
+        <type>dropdown</type>
+        <help>Küçük cihazlarda düşük bellek profili (32 MiB hedef).</help>
+    </field>
+</form>

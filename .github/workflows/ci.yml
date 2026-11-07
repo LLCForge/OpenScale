@@ -1,0 +1,103 @@
+# Continuous integration. It only reads the repository: no secrets, no
+# release signing (release keys never leave the owner's machines), no publishing.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  go:
+    name: go (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: C headers for the Linux cgo parts (YubiKey, Wayland, panel window)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq libpcsclite-dev libpipewire-0.3-dev libgtk-3-dev libwebkit2gtk-4.1-dev pkg-config
+
+      - name: go mod verify
+        run: go mod verify
+
+      - name: gofmt
+        run: |
+          out=$(git ls-files -z '*.go' | xargs -0 gofmt -l)
+          if [ -n "$out" ]; then echo "gofmt gerekli:"; echo "$out"; exit 1; fi
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: go test
+        run: go test -count=1 ./...
+
+      - name: Cross-compile release targets
+        if: runner.os == 'Linux'
+        env:
+          CGO_ENABLED: "0"
+        run: |
+          for t in linux/amd64 linux/arm64 windows/amd64 darwin/amd64 darwin/arm64 freebsd/amd64; do
+            GOOS=${t%/*} GOARCH=${t#*/} go build -trimpath -buildvcs=false -o /dev/null ./cmd/openscale
+          done
+          GOOS=linux GOARCH=arm GOARM=7 go build -trimpath -buildvcs=false -o /dev/null ./cmd/openscale
+
+      - name: Shell scripts
+        if: runner.os == 'Linux'
+        run: for f in scripts/*.sh deploy/linux/*.sh; do bash -n "$f"; done
+
+  panel:
+    name: panel
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: panel
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: panel/package.json
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: panel/pnpm-lock.yaml
+
+      - name: Install (lockfile only)
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Build
+        run: pnpm build

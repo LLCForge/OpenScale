@@ -1,0 +1,13 @@
+#!/bin/sh
+# /rw/config/rc.local of sys-openscale (#891, docs/qubes.md). An AppVM's
+# /etc is reset at every start, so the unit lives in /usr/local (kept in
+# the private volume) and is started from here. The kill switch is
+# already in place (qubes-firewall-user-script).
+
+# The unit and the state directory (bind-dirs keeps /var/lib/openscale).
+systemctl daemon-reload
+if [ -f /var/lib/openscale/device/anchor.json ]; then
+	systemctl --no-block start openscale-device.service
+else
+	echo "openscale: cihaz ağa katılmamış; sudo /usr/local/bin/openscale join ... ile katılın" >&2
+fi

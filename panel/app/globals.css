@@ -1,0 +1,204 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-figtree), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --font-heading: var(--font-figtree), ui-sans-serif, system-ui, sans-serif;
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+/*
+ * Palette follows the logo pack: the brand is monochrome, ink #1C1C20 on
+ * white and white on ink. Primary actions use the ink (light theme) or white
+ * (dark theme); color is kept for meaning only: green healthy, amber
+ * warning, red destructive. Dark is the default theme.
+ */
+:root {
+  --background: oklch(0.985 0.001 286);
+  --foreground: oklch(0.224 0.008 286);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.224 0.008 286);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.224 0.008 286);
+  --primary: oklch(0.224 0.008 286);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.955 0.002 286);
+  --secondary-foreground: oklch(0.224 0.008 286);
+  --muted: oklch(0.96 0.002 286);
+  --muted-foreground: oklch(0.48 0.01 286);
+  --accent: oklch(0.95 0.003 286);
+  --accent-foreground: oklch(0.224 0.008 286);
+  --destructive: oklch(0.51 0.2 27);
+  /* #236: darker than the dark theme's so green and amber text and icons
+     reach WCAG 2.1 AA (4.5:1 text, 3:1 icons) on the light background. */
+  --success: oklch(0.47 0.13 155);
+  --success-foreground: oklch(0.99 0 0);
+  --warning: oklch(0.66 0.15 65);
+  --warning-foreground: oklch(0.26 0.05 60);
+  --border: oklch(0.91 0.003 286);
+  --input: oklch(0.88 0.004 286);
+  --ring: oklch(0.45 0.01 286);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.97 0.002 286);
+  --sidebar-foreground: oklch(0.32 0.008 286);
+  --sidebar-accent: oklch(0.93 0.003 286);
+  --sidebar-accent-foreground: oklch(0.224 0.008 286);
+  --sidebar-border: oklch(0.91 0.003 286);
+}
+
+.dark {
+  --background: oklch(0.185 0.006 286);
+  --foreground: oklch(0.97 0.001 286);
+  --card: oklch(0.224 0.008 286);
+  --card-foreground: oklch(0.97 0.001 286);
+  --popover: oklch(0.24 0.008 286);
+  --popover-foreground: oklch(0.97 0.001 286);
+  --primary: oklch(0.985 0 0);
+  --primary-foreground: oklch(0.224 0.008 286);
+  --secondary: oklch(0.27 0.008 286);
+  --secondary-foreground: oklch(0.95 0.001 286);
+  --muted: oklch(0.26 0.007 286);
+  --muted-foreground: oklch(0.68 0.008 286);
+  --accent: oklch(0.29 0.008 286);
+  --accent-foreground: oklch(0.97 0.001 286);
+  --destructive: oklch(0.66 0.19 25);
+  --success: oklch(0.74 0.15 155);
+  --success-foreground: oklch(0.18 0.03 155);
+  --warning: oklch(0.8 0.14 75);
+  --warning-foreground: oklch(0.22 0.04 60);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 14%);
+  --ring: oklch(0.75 0.005 286);
+  --sidebar: oklch(0.165 0.006 286);
+  --sidebar-foreground: oklch(0.8 0.006 286);
+  --sidebar-accent: oklch(0.26 0.008 286);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 8%);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+  /* #236: a visible keyboard focus ring on links and custom controls
+     (buttons and inputs bring their own ring). */
+  :where(a, summary, [role="button"], [tabindex]:not([tabindex="-1"])):focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+}
+
+/* Touch targets (DESIGN.md: 32px controls). On a coarse pointer (phone,
+   tablet, touch laptop) controls grow toward the 44px touch guideline; a
+   mouse keeps the compact desktop density. :where() keeps specificity at
+   zero so a component's own size still wins when it sets one. */
+@media (pointer: coarse) {
+  :where([data-slot="button"], [data-slot="select-trigger"], [data-slot="input"]) {
+    min-height: 2.5rem;
+  }
+  :where([data-slot="button"][class*="size-"]) {
+    min-width: 2.5rem;
+  }
+  :where([data-slot="dropdown-menu-item"], [data-slot="dropdown-menu-checkbox-item"], [data-slot="dropdown-menu-radio-item"], [data-slot="select-item"]) {
+    min-height: 2.75rem;
+  }
+}
+
+/* Long unbroken machine values (keys, fingerprints, URLs) wrap inside their
+   box instead of pushing the page sideways on a 375px screen. */
+@media (max-width: 47.99rem) {
+  :where(main) :where(p, dd) {
+    overflow-wrap: anywhere;
+  }
+}
+
+/* #236: honor the system's reduced-motion setting. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* #532: presentation mode (components/shell/presentation-mode.tsx). IP
+   addresses, fingerprints, invite codes and endpoints are shown in
+   monospace or code; they are blurred while sharing the screen. The blur is
+   not lifted on hover; copy buttons still work. Elements that only show
+   harmless numbers opt out with data-presentation-safe. */
+:root[data-presentation="on"]
+  :is(.font-mono, code, kbd, pre, samp, [data-sensitive]):not([data-presentation-safe]) {
+  filter: blur(6px);
+  user-select: none;
+}
+
+/* #557: printing the connection card prints only the card. While a
+   [data-print-area] element is on the page everything else is hidden on
+   paper; the card itself prints in black on white whatever the theme. */
+@media print {
+  body:has([data-print-area]) * {
+    visibility: hidden;
+  }
+  body:has([data-print-area]) [data-print-area],
+  body:has([data-print-area]) [data-print-area] * {
+    visibility: visible;
+    color: #000 !important;
+    background: transparent !important;
+    filter: none !important;
+  }
+  body:has([data-print-area]) [data-print-area] {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+    padding: 1.5rem;
+  }
+  body:has([data-print-area]) [data-print-hide] {
+    display: none !important;
+  }
+}

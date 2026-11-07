@@ -1,0 +1,35 @@
+# OpenScale release source sync (ADR-0225), on the coordinator host only.
+# When the owner set an upstream source ("openscale update source set
+# https://github.com/<owner>/<repo>"), it fetches the newest release, verifies
+# its signed manifest exactly as devices do and puts it into the coordinator's
+# mirror. It runs outside the sandboxed coordinator process; devices never
+# contact the source. Without a source setting it does nothing.
+[Unit]
+Description=OpenScale release source sync
+After=network-online.target
+Wants=network-online.target
+ConditionPathExists=/var/lib/openscale/coordinator/release-source.json
+
+[Service]
+Type=oneshot
+User=openscale
+Group=openscale
+ExecStart=/usr/local/bin/openscale update source sync
+TimeoutStartSec=45min
+UMask=0077
+LimitCORE=0
+NoNewPrivileges=yes
+ProtectSystem=strict
+ReadWritePaths=/var/lib/openscale/coordinator
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+MemoryMax=256M
+SystemCallArchitectures=native

@@ -1,0 +1,8 @@
+# Allowlist build context of deploy/routeros/Dockerfile: only the release
+# programs and the two entry points; keys, ag/, network.json never enter.
+*
+!dist/*/openscale-linux-amd64
+!dist/*/openscale-linux-arm64
+!dist/*/openscale-linux-armv7
+!deploy/docker/entrypoint.sh
+!deploy/routeros/routeros-entrypoint.sh

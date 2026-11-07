@@ -1,0 +1,23 @@
+# OpenScale on QNAP QTS/QuTS hero with Container Station 3 (#319,
+# docs/nas.md). Applications > Create > paste this YAML. Import the image
+# first (Images > Import > openscale-<version>.oci.tar). Store the state in
+# a share, e.g. /share/Container/openscale.
+services:
+  openscale:
+    image: openscale:local
+    container_name: openscale
+    restart: unless-stopped
+    network_mode: host
+    cap_drop: [ALL]
+    cap_add: [NET_ADMIN]
+    devices: ["/dev/net/tun:/dev/net/tun"]
+    security_opt: ["no-new-privileges:true"]
+    read_only: true
+    tmpfs: ["/tmp:mode=1777,size=16m"]
+    environment:
+      OPENSCALE_STATE: file
+      OPENSCALE_LISTEN_PORT: "41821"
+      OPENSCALE_HOSTNAME: qnap
+    volumes:
+      - /share/Container/openscale/state:/var/lib/openscale
+      - /share/Container/openscale/invite.txt:/run/secrets/openscale-invite:ro

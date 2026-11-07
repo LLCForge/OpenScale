@@ -1,0 +1,6 @@
+- QR enrollment and invite scanning (built-in decoder)
+- Biometric lock
+- Mobile data and Wi-Fi policy
+- Per-app split tunnel
+- Lost device mode
+- Quick Settings tile and notification status

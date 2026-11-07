@@ -1,0 +1,53 @@
+# OpenScale device with Docker Compose (docs/konteyner.md). Build the image
+# first (deploy/docker/Dockerfile) and put an invite code from the panel in
+# ./invite.txt; the approval code appears in `docker compose logs`.
+#
+#   docker compose -f deploy/docker/compose.yaml up -d
+#
+# The persistent identity uses the named volume below (OPENSCALE_STATE=file).
+# For a throwaway device that never writes a key to disk, use the
+# "openscale-ephemeral" profile instead: docker compose --profile ephemeral up -d
+name: openscale
+
+x-openscale: &openscale
+  image: openscale:local
+  restart: unless-stopped
+  cap_drop: [ALL]
+  cap_add: [NET_ADMIN]
+  devices: ["/dev/net/tun:/dev/net/tun"]
+  security_opt: ["no-new-privileges:true"]
+  read_only: true
+  tmpfs: ["/tmp:mode=1777,size=16m"]
+  environment:
+    OPENSCALE_LISTEN_PORT: "41821"
+  secrets:
+    - source: openscale-invite
+      target: /run/secrets/openscale-invite
+
+services:
+  openscale:
+    <<: *openscale
+    environment:
+      OPENSCALE_STATE: file
+      OPENSCALE_LISTEN_PORT: "41821"
+    ports: ["41821:41821/udp"]
+    volumes:
+      - openscale-state:/var/lib/openscale
+
+  openscale-ephemeral:
+    <<: *openscale
+    profiles: [ephemeral]
+    environment:
+      OPENSCALE_STATE: memory
+      OPENSCALE_LISTEN_PORT: "41822"
+    ports: ["41822:41822/udp"]
+    tmpfs:
+      - "/tmp:mode=1777,size=16m"
+      - "/var/lib/openscale:mode=0700,size=8m"
+
+secrets:
+  openscale-invite:
+    file: ./invite.txt
+
+volumes:
+  openscale-state: {}

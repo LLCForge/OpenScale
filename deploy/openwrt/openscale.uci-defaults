@@ -1,0 +1,25 @@
+#!/bin/sh
+# Runs once after install (OpenWrt uci-defaults, #446): a firewall zone for
+# the tunnel interface and a rule for the WireGuard port. Forwarding from
+# the tunnel to the LAN (subnet router) or to the WAN (exit node) is not
+# opened here; docs/openwrt.md shows the two commands. Existing settings
+# are left alone.
+
+uci -q get firewall.openscale >/dev/null && exit 0
+
+uci -q batch <<'UCI'
+set firewall.openscale=zone
+set firewall.openscale.name='openscale'
+set firewall.openscale.device='OpenScale'
+set firewall.openscale.input='ACCEPT'
+set firewall.openscale.output='ACCEPT'
+set firewall.openscale.forward='REJECT'
+set firewall.openscale_wg=rule
+set firewall.openscale_wg.name='OpenScale-WireGuard'
+set firewall.openscale_wg.src='wan'
+set firewall.openscale_wg.proto='udp'
+set firewall.openscale_wg.dest_port='41821'
+set firewall.openscale_wg.target='ACCEPT'
+commit firewall
+UCI
+exit 0

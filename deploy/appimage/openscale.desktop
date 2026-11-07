@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=OpenScale
+GenericName=Mesh VPN
+Comment=Kişisel, bağımsız mesh VPN
+Exec=openscale status
+Icon=openscale
+Terminal=true
+Categories=Network;
+Keywords=VPN;WireGuard;mesh;

@@ -1,0 +1,24 @@
+#!/bin/sh
+# postrm of the openscale Debian package. Keys and network state under
+# /var/lib/openscale are never deleted automatically, not even on purge:
+# losing a coordinator or device key is not recoverable.
+set -e
+
+case "$1" in
+remove | purge)
+	if [ -d /run/systemd/system ]; then
+		systemctl daemon-reload >/dev/null 2>&1 || true
+	fi
+	if [ "$1" = purge ]; then
+		echo "Anahtarlar ve durum /var/lib/openscale altında bırakıldı; gerekmiyorsa elle silin." >&2
+		echo "openscale kullanıcısı da bırakıldı: userdel openscale" >&2
+	fi
+	;;
+upgrade | failed-upgrade | abort-install | abort-upgrade | disappear) ;;
+*)
+	echo "postrm: bilinmeyen argüman '$1'" >&2
+	exit 1
+	;;
+esac
+
+exit 0

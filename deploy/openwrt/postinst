@@ -1,0 +1,7 @@
+#!/bin/sh
+# Enable the service at boot; it starts only after joining (enabled=1).
+[ -n "${IPKG_INSTROOT}" ] && exit 0
+/etc/init.d/openscale enable
+[ -x /etc/uci-defaults/90-openscale ] && /etc/uci-defaults/90-openscale && rm -f /etc/uci-defaults/90-openscale
+/etc/init.d/firewall reload >/dev/null 2>&1
+exit 0

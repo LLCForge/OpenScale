@@ -1,0 +1,7 @@
+<menu>
+    <VPN>
+        <OpenScale VisibleName="OpenScale" cssClass="fa fa-globe fa-fw" order="60">
+            <Settings url="/ui/openscale/" order="10"/>
+        </OpenScale>
+    </VPN>
+</menu>

@@ -1,0 +1,55 @@
+# OpenScale device on a Linux server (ADR-0018). It runs the tunnel and,
+# when the signed document gives this device the exit node role, turns on
+# forwarding and NAT. It needs CAP_NET_ADMIN for the interface, routes,
+# sysctl and nftables, and nothing else.
+[Unit]
+Description=OpenScale device (tunnel and exit node)
+After=network-online.target time-sync.target openscale-coordinator.service
+Wants=network-online.target
+
+[Service]
+# The tunnel reports READY=1 once the interface has its addresses (F-149),
+# so units ordered After=openscale-device.service can bind to the tunnel IP.
+# "openscale service install" overrides ExecStart with a drop-in that reads
+# the saved parameters (/etc/openscale/device.json).
+Type=notify
+NotifyAccess=main
+TimeoutStartSec=90
+ExecStart=/usr/local/bin/openscale up --state-dir /var/lib/openscale/device --listen-port 41821 --interface OpenScale
+Restart=on-failure
+RestartSec=5
+UMask=0077
+# No core dumps (#638, ADR-0184): the service holds the device keys.
+LimitCORE=0
+# Resource limits (#494): a leak ends in an OOM kill and a restart instead
+# of a machine that swaps to a halt. Normal use is tens of MiB; the low
+# memory profile (OPENSCALE_MEMORY_PROFILE=low, #392) keeps the Go heap
+# near 24 MiB. Raise them with "systemctl edit" on a busy exit node.
+MemoryHigh=192M
+MemoryMax=256M
+Environment=GOMEMLIMIT=160MiB
+TasksMax=512
+
+CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_RAW
+AmbientCapabilities=CAP_NET_ADMIN CAP_NET_RAW
+NoNewPrivileges=yes
+ProtectSystem=strict
+ReadWritePaths=/var/lib/openscale/device
+ProtectHome=yes
+PrivateTmp=yes
+DeviceAllow=/dev/net/tun rw
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_NETLINK AF_UNIX
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target

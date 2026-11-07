@@ -1,0 +1,111 @@
+#cloud-config
+# OpenScale appliance from a stock image (#320, docs/hazir-imaj.md).
+#
+# Works with images that run cloud-init from the boot partition: Raspberry
+# Pi OS (Raspberry Pi Imager 2.0+ / Trixie), Ubuntu Server for Raspberry Pi,
+# and any Debian/Ubuntu cloud image on Proxmox (cicustom user-data). Write
+# the image, then copy to the boot partition (FAT, the one with
+# user-data):
+#
+#   openscale/openscale_<version>_arm64.deb        (or _armhf / _amd64)
+#   openscale/openscale-<version>.release.json     signed manifest
+#   openscale/openscale-release-verify             a verifier you trust
+#                                                  (docs/surum-dogrulama.md)
+#   openscale/invite.txt                           invite code from the panel
+#   openscale/root-fingerprint.txt                 release root fingerprint
+#                                                  (from the owner's paper copy)
+#
+# and replace this user-data with this file (merge your own user/SSH key
+# settings). On first boot the package is verified against the signed
+# manifest and installed; nothing is downloaded. The device then joins with
+# the invite: the 4-digit approval code is shown on the console (HDMI) and
+# in the journal; approve it in the panel. tty1 keeps showing the device
+# status afterwards.
+
+hostname: openscale-pi
+ssh_pwauth: false
+package_update: false
+package_upgrade: false
+
+write_files:
+  - path: /usr/local/sbin/openscale-firstboot
+    permissions: "0700"
+    owner: root:root
+    content: |
+      #!/bin/sh
+      # Verifies and installs OpenScale from the boot partition, then joins
+      # with the invite. Runs once (cloud-init runcmd); safe to re-run.
+      set -eu
+      boot=
+      for d in /boot/firmware /boot; do
+        [ -d "$d/openscale" ] && { boot=$d/openscale; break; }
+      done
+      [ -n "$boot" ] || { echo "openscale: önyükleme bölümünde openscale/ klasörü yok" >&2; exit 1; }
+      install -d -m 0700 /var/lib/openscale-firstboot
+      work=/var/lib/openscale-firstboot
+      # Copy out of the FAT partition first: verify and install the same bytes.
+      cp "$boot"/openscale_*.deb "$boot"/openscale-*.release.json "$work/"
+      install -m 0755 "$boot/openscale-release-verify" "$work/openscale-release-verify"
+      deb=$(ls "$work"/openscale_*.deb | head -n 1)
+      manifest=$(ls "$work"/openscale-*.release.json | head -n 1)
+      fp=$(tr -d '\r\n' < "$boot/root-fingerprint.txt")
+      "$work/openscale-release-verify" -manifest "$manifest" -root-fingerprint "$fp" "$deb"
+      if ! dpkg-query -W -f='${Status}' openscale 2>/dev/null | grep -q 'install ok installed'; then
+        apt-get install -y --no-install-recommends --no-download "$deb" || dpkg -i "$deb"
+      fi
+      install -m 0600 "$boot/invite.txt" /var/lib/openscale/invite.txt
+      # The invite is a credential: remove it from the readable FAT partition.
+      rm -f "$boot/invite.txt"
+      if [ ! -f /var/lib/openscale/device/anchor.json ]; then
+        echo "OpenScale: davetle katılınıyor; onay kodunu panelde onaylayın." | tee /dev/tty1
+        openscale invite-join --state-dir /var/lib/openscale/device \
+          --code @/var/lib/openscale/invite.txt --name "$(hostname)" 2>&1 | tee /dev/tty1
+      fi
+      rm -f /var/lib/openscale/invite.txt
+      systemctl enable --now openscale-device.service
+      systemctl enable --now openscale-console.service
+
+  - path: /usr/local/sbin/openscale-console
+    permissions: "0755"
+    owner: root:root
+    content: |
+      #!/bin/sh
+      # Status screen on tty1: refreshed every 10 seconds, read-only.
+      while :; do
+        printf '\033[H\033[2J'
+        echo "OpenScale  $(hostname)  $(date '+%Y-%m-%d %H:%M:%S')"
+        echo
+        openscale status --state-dir /var/lib/openscale/device 2>&1 | head -n 40
+        echo
+        echo "Giriş için Alt+F2."
+        sleep 10
+      done
+
+  - path: /etc/systemd/system/openscale-console.service
+    permissions: "0644"
+    owner: root:root
+    content: |
+      [Unit]
+      Description=OpenScale status screen on tty1
+      After=openscale-device.service getty.target
+      Conflicts=getty@tty1.service
+
+      [Service]
+      ExecStart=/usr/local/sbin/openscale-console
+      StandardInput=tty
+      StandardOutput=tty
+      TTYPath=/dev/tty1
+      TTYReset=yes
+      TTYVHangup=yes
+      Restart=always
+      RestartSec=5
+      NoNewPrivileges=yes
+      ProtectSystem=strict
+      ProtectHome=yes
+      PrivateTmp=yes
+
+      [Install]
+      WantedBy=multi-user.target
+
+runcmd:
+  - [/usr/local/sbin/openscale-firstboot]

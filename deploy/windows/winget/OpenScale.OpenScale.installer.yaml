@@ -1,0 +1,19 @@
+# winget installer manifest template (#887). The URL uses the download
+# mirror the owner chose (https, laid out like dist/); the SHA-256
+# comes from dist/<sürüm>/SHA256SUMS.
+PackageIdentifier: OpenScale.OpenScale
+PackageVersion: @VERSION@
+MinimumOSVersion: 10.0.17763.0
+InstallerType: zip
+NestedInstallerType: portable
+NestedInstallerFiles:
+  - RelativeFilePath: openscale-@VERSION@-windows-amd64/openscale-windows-amd64.exe
+    PortableCommandAlias: openscale
+Commands:
+  - openscale
+Installers:
+  - Architecture: x64
+    InstallerUrl: @MIRROR@/@VERSION@/openscale-@VERSION@-windows-amd64.zip
+    InstallerSha256: @SHA256_WINDOWS_ZIP@
+ManifestType: installer
+ManifestVersion: 1.6.0

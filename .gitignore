@@ -1,0 +1,50 @@
+# Derleme çıktıları
+/bin/
+*.exe
+*.test
+*.out
+
+# Rakip projelerin klonları (yalnızca okuma kaynağı, projeye dahil değil)
+/rakipler/
+
+# Yerel ağ ve cihaz verileri: özel anahtar içerir, asla depoya girmemeli
+/ag/
+root.key
+device.key
+network.json
+/history/
+*.passphrase
+parola*.txt
+
+# Panel (Next.js) derleme çıktıları; dist yalnızca .gitkeep ile depoda
+/panel/node_modules/
+/panel/.next/
+/panel/out/
+/panel/next-env.d.ts
+/internal/panel/web/dist/*
+!/internal/panel/web/dist/.gitkeep
+
+# Go fuzz önbelleği dışındaki geçici dosyalar
+.*.tmp-*
+
+# Editör ve işletim sistemi
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+/dist/
+
+# Never published: local build logs, release signing material, tool caches
+/build/*.log
+/build/*tmp*/
+/build/release/*
+!/build/release/root.pub
+!/build/release/revocations.json
+*.release-key
+*.sealed
+.impeccable/
+panel/.impeccable/
+/vendor/
+/openscale
+/openscale-*
+

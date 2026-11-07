@@ -1,0 +1,244 @@
+policy_module(openscale, 1.0.0)
+
+########################################
+#
+# OpenScale SELinux policy module (#886, docs/apparmor-selinux.md).
+#
+# Two domains for one program:
+#   openscale_device_t       the device service (openscale-device.service);
+#                            systemd enters it through the file label
+#                            openscale_exec_t (init_daemon_domain).
+#   openscale_coordinator_t  the coordinator (openscale-coordinator.service);
+#                            entered through SELinuxContext= in
+#                            openscale-coordinator-selinux.conf, because a
+#                            file can carry only one automatic transition.
+# Commands typed by the owner keep the owner's own domain.
+#
+# Access derived from the code (internal/osnet, internal/service,
+# internal/sysinfo) and the units in deploy/linux:
+#   device:      its state directory, /etc/openscale (read), /dev/net/tun,
+#                ip/nft/iptables/resolvectl/resolvconf/sysctl/systemctl/nmcli
+#                run in its own domain, /proc/sys/net, resolv.conf,
+#                the kill switch boot unit, its UDP port
+#   coordinator: its state directory, /proc (system report), its UDP port,
+#                an optional TCP port (http_port_t for 443); no programs,
+#                no devices
+#
+# install-selinux.sh loads the module and marks both domains permissive
+# first (semanage permissive); denials are only logged (ausearch -m AVC).
+#
+
+type openscale_exec_t;
+
+type openscale_device_t;
+init_daemon_domain(openscale_device_t, openscale_exec_t)
+
+type openscale_coordinator_t;
+domain_type(openscale_coordinator_t)
+domain_entry_file(openscale_coordinator_t, openscale_exec_t)
+role system_r types openscale_coordinator_t;
+
+type openscale_etc_t;
+files_config_file(openscale_etc_t)
+
+# /var/lib/openscale itself and the kill switch file the boot unit reads.
+type openscale_var_lib_t;
+files_type(openscale_var_lib_t)
+
+type openscale_device_var_lib_t;
+files_type(openscale_device_var_lib_t)
+
+type openscale_coordinator_var_lib_t;
+files_type(openscale_coordinator_var_lib_t)
+
+# UDP 41820 (coordinator) and 41821 (device); install-selinux.sh adds them
+# with semanage port, so a changed port is one command.
+type openscale_port_t;
+corenet_port(openscale_port_t)
+
+########################################
+#
+# Shared by both services
+#
+
+gen_require(`
+	type init_t;
+')
+
+# systemd may start the coordinator in its domain (SELinuxContext=);
+# no type_transition, so nothing else ever lands there.
+domtrans_pattern(init_t, openscale_exec_t, openscale_coordinator_t)
+allow init_t openscale_coordinator_t:process { siginh rlimitinh noatsecure };
+init_use_fds(openscale_coordinator_t)
+init_sigchld(openscale_coordinator_t)
+
+########################################
+#
+# Device
+#
+
+allow openscale_device_t self:capability { net_admin net_raw };
+dontaudit openscale_device_t self:capability { dac_override dac_read_search sys_module };
+allow openscale_device_t self:process { signal signull sigchld getsched setsched setrlimit };
+allow openscale_device_t self:fifo_file rw_fifo_file_perms;
+allow openscale_device_t self:unix_stream_socket create_stream_socket_perms;
+allow openscale_device_t self:unix_dgram_socket create_socket_perms;
+allow openscale_device_t self:udp_socket create_socket_perms;
+allow openscale_device_t self:tcp_socket { create_stream_socket_perms listen accept };
+allow openscale_device_t self:rawip_socket create_socket_perms;
+allow openscale_device_t self:icmp_socket create_socket_perms;
+allow openscale_device_t self:tun_socket { create_socket_perms relabelfrom relabelto attach_queue };
+allow openscale_device_t self:netlink_route_socket { create_netlink_socket_perms nlmsg_read nlmsg_write };
+allow openscale_device_t self:netlink_netfilter_socket create_netlink_socket_perms;
+allow openscale_device_t self:netlink_generic_socket create_socket_perms;
+
+allow openscale_device_t openscale_exec_t:file { mmap_exec_file_perms ioctl lock };
+# Document parser helper (#161, internal/privsep): the program runs itself
+# again as "nobody" (Landlock, seccomp) and stays in this domain.
+allow openscale_device_t self:capability { setuid setgid };
+can_exec(openscale_device_t, openscale_exec_t)
+
+# State.
+allow openscale_device_t openscale_var_lib_t:dir rw_dir_perms;
+manage_files_pattern(openscale_device_t, openscale_var_lib_t, openscale_var_lib_t)
+manage_dirs_pattern(openscale_device_t, openscale_device_var_lib_t, openscale_device_var_lib_t)
+manage_files_pattern(openscale_device_t, openscale_device_var_lib_t, openscale_device_var_lib_t)
+manage_lnk_files_pattern(openscale_device_t, openscale_device_var_lib_t, openscale_device_var_lib_t)
+filetrans_pattern(openscale_device_t, openscale_var_lib_t, openscale_device_var_lib_t, dir, "device")
+read_files_pattern(openscale_device_t, openscale_etc_t, openscale_etc_t)
+list_dirs_pattern(openscale_device_t, openscale_etc_t, openscale_etc_t)
+files_search_var_lib(openscale_device_t)
+files_read_etc_files(openscale_device_t)
+
+# Tun, sysfs, /proc.
+corenet_rw_tun_tap_dev(openscale_device_t)
+dev_read_sysfs(openscale_device_t)
+dev_read_urand(openscale_device_t)
+kernel_read_system_state(openscale_device_t)
+kernel_read_network_state(openscale_device_t)
+kernel_read_kernel_sysctls(openscale_device_t)
+kernel_rw_net_sysctls(openscale_device_t)
+kernel_request_load_module(openscale_device_t)
+fs_getattr_xattr_fs(openscale_device_t)
+# Split tunnel cgroup (internal/osnet/splittunnel_linux.go).
+fs_manage_cgroup_dirs(openscale_device_t)
+fs_rw_cgroup_files(openscale_device_t)
+
+# Network.
+corenet_udp_bind_generic_node(openscale_device_t)
+corenet_tcp_bind_generic_node(openscale_device_t)
+allow openscale_device_t openscale_port_t:udp_socket name_bind;
+corenet_udp_sendrecv_generic_if(openscale_device_t)
+corenet_tcp_connect_all_ports(openscale_device_t)
+sysnet_dns_name_resolve(openscale_device_t)
+auth_use_nsswitch(openscale_device_t)
+miscfiles_read_localization(openscale_device_t)
+miscfiles_read_generic_certs(openscale_device_t)
+logging_send_syslog_msg(openscale_device_t)
+
+# DNS: resolv.conf and its backups when systemd-resolved is absent.
+sysnet_manage_config(openscale_device_t)
+sysnet_etc_filetrans_config(openscale_device_t)
+
+# Tools run in this domain (no shell, absolute paths).
+corecmd_exec_bin(openscale_device_t)
+corecmd_exec_shell(openscale_device_t)
+sysnet_exec_ifconfig(openscale_device_t)
+
+optional_policy(`
+	gen_require(`
+		type iptables_exec_t;
+		type iptables_var_run_t;
+	')
+	can_exec(openscale_device_t, iptables_exec_t)
+	allow openscale_device_t iptables_var_run_t:file { create_file_perms rw_file_perms lock };
+	files_pid_filetrans(openscale_device_t, iptables_var_run_t, file, "xtables.lock")
+')
+
+# Kill switch boot unit (/etc/systemd/system/openscale-killswitch.service),
+# daemon-reload and enable.
+optional_policy(`
+	gen_require(`
+		type systemd_unit_file_t;
+		type systemd_systemctl_exec_t;
+		class service { enable reload start status };
+		class system { reload status };
+	')
+	manage_files_pattern(openscale_device_t, systemd_unit_file_t, systemd_unit_file_t)
+	manage_lnk_files_pattern(openscale_device_t, systemd_unit_file_t, systemd_unit_file_t)
+	allow openscale_device_t systemd_unit_file_t:dir rw_dir_perms;
+	allow openscale_device_t systemd_unit_file_t:service { enable reload start status };
+	can_exec(openscale_device_t, systemd_systemctl_exec_t)
+	allow openscale_device_t init_t:system { reload status };
+	init_stream_connect(openscale_device_t)
+')
+
+optional_policy(`
+	dbus_system_bus_client(openscale_device_t)
+	optional_policy(`
+		systemd_dbus_chat_resolved(openscale_device_t)
+	')
+	optional_policy(`
+		networkmanager_dbus_chat(openscale_device_t)
+	')
+	# Host firewall check: firewall-cmd talks to firewalld
+	# (internal/osnet/hostfw_linux.go).
+	optional_policy(`
+		firewalld_dbus_chat(openscale_device_t)
+	')
+	init_dbus_chat(openscale_device_t)
+')
+
+########################################
+#
+# Coordinator
+#
+
+allow openscale_coordinator_t self:capability net_bind_service;
+allow openscale_coordinator_t self:process { signal signull sigchld getsched setrlimit };
+allow openscale_coordinator_t self:fifo_file rw_fifo_file_perms;
+allow openscale_coordinator_t self:unix_stream_socket create_stream_socket_perms;
+allow openscale_coordinator_t self:unix_dgram_socket create_socket_perms;
+allow openscale_coordinator_t self:udp_socket create_socket_perms;
+allow openscale_coordinator_t self:tcp_socket { create_stream_socket_perms listen accept };
+allow openscale_coordinator_t self:netlink_route_socket { create_netlink_socket_perms nlmsg_read };
+
+allow openscale_coordinator_t openscale_exec_t:file { mmap_exec_file_perms ioctl lock };
+
+files_search_var_lib(openscale_coordinator_t)
+list_dirs_pattern(openscale_coordinator_t, openscale_var_lib_t, openscale_var_lib_t)
+manage_dirs_pattern(openscale_coordinator_t, openscale_coordinator_var_lib_t, openscale_coordinator_var_lib_t)
+manage_files_pattern(openscale_coordinator_t, openscale_coordinator_var_lib_t, openscale_coordinator_var_lib_t)
+manage_lnk_files_pattern(openscale_coordinator_t, openscale_coordinator_var_lib_t, openscale_coordinator_var_lib_t)
+filetrans_pattern(openscale_coordinator_t, openscale_var_lib_t, openscale_coordinator_var_lib_t, dir, "coordinator")
+read_files_pattern(openscale_coordinator_t, openscale_etc_t, openscale_etc_t)
+list_dirs_pattern(openscale_coordinator_t, openscale_etc_t, openscale_etc_t)
+files_read_etc_files(openscale_coordinator_t)
+
+kernel_read_system_state(openscale_coordinator_t)
+kernel_read_kernel_sysctls(openscale_coordinator_t)
+dev_read_sysfs(openscale_coordinator_t)
+dev_read_urand(openscale_coordinator_t)
+fs_getattr_xattr_fs(openscale_coordinator_t)
+
+corenet_udp_bind_generic_node(openscale_coordinator_t)
+corenet_tcp_bind_generic_node(openscale_coordinator_t)
+allow openscale_coordinator_t openscale_port_t:udp_socket name_bind;
+# OPENSCALE_TCP_LISTEN=:443 (ADR-0032).
+corenet_tcp_bind_http_port(openscale_coordinator_t)
+sysnet_dns_name_resolve(openscale_coordinator_t)
+miscfiles_read_localization(openscale_coordinator_t)
+logging_send_syslog_msg(openscale_coordinator_t)
+
+# sd_notify (Type=notify) for both services.
+optional_policy(`
+	gen_require(`
+		type init_var_run_t;
+	')
+	allow { openscale_device_t openscale_coordinator_t } init_var_run_t:dir search;
+	allow { openscale_device_t openscale_coordinator_t } init_var_run_t:sock_file write;
+	allow { openscale_device_t openscale_coordinator_t } init_t:unix_dgram_socket sendto;
+')
+
+# Never: programs, devices, the device's keys.
+dontaudit openscale_coordinator_t openscale_device_var_lib_t:dir search;

@@ -1,0 +1,20 @@
+# winget default locale manifest template (#887).
+PackageIdentifier: OpenScale.OpenScale
+PackageVersion: @VERSION@
+PackageLocale: tr-TR
+Publisher: OpenScale
+PackageName: OpenScale
+License: MIT
+ShortDescription: Kendi sunucunuzda çalışan, telemetrisiz WireGuard mesh VPN.
+Description: >-
+  OpenScale cihazlarınızı kök anahtarla imzalanmış bir ağ belgesine göre
+  WireGuard tüneliyle birbirine bağlar. Koordinatör güvenilmez kabul edilir;
+  hiçbir bileşen sahibin yapılandırmadığı bir adrese bağlanmaz.
+Moniker: openscale
+Tags:
+  - vpn
+  - wireguard
+  - mesh
+ReleaseNotes: docs/surum-notlari-@VERSION@.md
+ManifestType: defaultLocale
+ManifestVersion: 1.6.0

@@ -1,0 +1,24 @@
+# Waits until the OpenScale tunnel is ready (F-149). A service that binds
+# to the tunnel address orders itself after this unit:
+#   [Unit]
+#   Wants=openscale-wait-online.service
+#   After=openscale-wait-online.service
+[Unit]
+Description=Wait for the OpenScale tunnel to be ready
+Requires=openscale-device.service
+After=openscale-device.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/bin/openscale wait --state-dir /var/lib/openscale/device --timeout 120s --quiet
+UMask=0077
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+[Install]
+WantedBy=multi-user.target

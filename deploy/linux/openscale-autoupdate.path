@@ -1,0 +1,15 @@
+# OpenScale automatic update trigger (ADR-0225). The device unit downloads
+# and verifies a release from the coordinator's mirror and writes a request
+# into its own state folder; it has no right to replace the program. This
+# path unit then starts openscale-autoupdate.service as root, which verifies
+# everything again and installs (with health check and rollback).
+# Enable: systemctl enable --now openscale-autoupdate.path
+[Unit]
+Description=OpenScale automatic update request
+
+[Path]
+PathExists=/var/lib/openscale/device/autoupdate/request.json
+Unit=openscale-autoupdate.service
+
+[Install]
+WantedBy=multi-user.target

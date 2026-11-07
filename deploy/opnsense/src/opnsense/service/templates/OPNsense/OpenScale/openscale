@@ -1,0 +1,17 @@
+{# /etc/rc.conf.d/openscale, read by /usr/local/etc/rc.d/openscale (#885).
+   The model allows only digits, letters and two fixed words here, so the
+   values never need quoting beyond the double quotes. #}
+{% if helpers.exists('OPNsense.openscale.general.enabled') and OPNsense.openscale.general.enabled == '1' %}
+openscale_enable="YES"
+{% else %}
+openscale_enable="NO"
+{% endif %}
+{% if helpers.exists('OPNsense.openscale.general.listen_port') %}
+openscale_listen_port="{{ OPNsense.openscale.general.listen_port }}"
+{% endif %}
+{% if helpers.exists('OPNsense.openscale.general.interface') %}
+openscale_interface="{{ OPNsense.openscale.general.interface }}"
+{% endif %}
+{% if helpers.exists('OPNsense.openscale.general.memory_profile') %}
+openscale_memory_profile="{{ OPNsense.openscale.general.memory_profile }}"
+{% endif %}

@@ -1,0 +1,1 @@
+Personal WireGuard mesh VPN: no cloud, no telemetry, single owner

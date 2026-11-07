@@ -1,0 +1,20 @@
+# OpenScale automatic update installer (ADR-0225), started by
+# openscale-autoupdate.path. It claims the device's request, verifies the
+# cached release with the release root key, the revocation list, the beta
+# channel and the rollback rule, and installs it: the binary through
+# "update apply" logic (stop, swap, start, health check, rollback) or the
+# .deb through dpkg. Nothing unsigned is installed. It runs as root because
+# it replaces the program and restarts the units.
+[Unit]
+Description=OpenScale automatic update installer
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/openscale update auto install
+TimeoutStartSec=20min
+UMask=0077
+LimitCORE=0
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectHome=yes

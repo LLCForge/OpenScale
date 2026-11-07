@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- NFC ile davet aktarımı (#470, P08): NFC Forum Type 4 etiketi
+     (NDEF uygulaması D2760000850101). Kilit açık değilken sistem APDU
+     iletmez; servis bileşeni yalnızca paylaşım penceresi açıkken etkindir. -->
+<host-apdu-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/nfc_service_desc"
+    android:requireDeviceUnlock="true">
+    <aid-group
+        android:category="other"
+        android:description="@string/nfc_service_desc">
+        <aid-filter android:name="D2760000850101" />
+    </aid-group>
+</host-apdu-service>

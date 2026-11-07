@@ -1,0 +1,19 @@
+configuration:
+  invite_code:
+    name: Davet kodu
+    description: OpenScale panelinden alınan davet kodu; yalnızca katılırken bir kez kullanılır. Cihaz katıldıktan sonra silin.
+  hostname:
+    name: Cihaz adı
+    description: Bu cihazın özel ağdaki önerilen adı (küçük harf, rakam ve tire).
+  listen_port:
+    name: UDP portu
+    description: WireGuard portu. Doğrudan bağlantı için modemde yönlendirin; yönlendirmezseniz aktarıcı kullanılır.
+  memory_profile:
+    name: Bellek profili
+    description: low belleği 32 MiB dolayında tutar; default büyük makineler içindir.
+  mqtt_publish:
+    name: MQTT'ye yayımla
+    description: Tünel durumunu ve olayları Mosquitto eklentisine yayımlar.
+  mqtt_prefix:
+    name: MQTT konu öneki
+    description: Konular önek/cihaz/availability, /status ve /event olur.

@@ -1,0 +1,7 @@
+OpenScale is a personal WireGuard mesh VPN. This plugin adds a settings
+page (VPN: OpenScale) that enables the OpenScale device on the firewall,
+chooses its UDP port, interface name and memory profile, and starts or
+stops the service. Joining the network is done once on the console.
+
+On FreeBSD the device has no exit node, kill switch, subnet routing or
+MagicDNS yet (ADR-0090). Not tested on a real OPNsense firewall.

@@ -1,0 +1,9 @@
+<acl>
+    <page-vpn-openscale>
+        <name>VPN: OpenScale</name>
+        <patterns>
+            <pattern>ui/openscale/*</pattern>
+            <pattern>api/openscale/*</pattern>
+        </patterns>
+    </page-vpn-openscale>
+</acl>

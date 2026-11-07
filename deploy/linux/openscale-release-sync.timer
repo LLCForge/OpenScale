@@ -1,0 +1,13 @@
+# Runs openscale-release-sync.service hourly; the sync itself honours the
+# interval the owner chose ("update source set --every", default 6h).
+# Enable: systemctl enable --now openscale-release-sync.timer
+[Unit]
+Description=OpenScale release source sync timer
+
+[Timer]
+OnBootSec=10min
+OnUnitActiveSec=1h
+RandomizedDelaySec=10min
+
+[Install]
+WantedBy=timers.target

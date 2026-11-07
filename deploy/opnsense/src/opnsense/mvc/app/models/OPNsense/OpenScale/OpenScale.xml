@@ -1,0 +1,33 @@
+<model>
+    <mount>//OPNsense/openscale</mount>
+    <version>1.0.0</version>
+    <description>OpenScale WireGuard mesh VPN device</description>
+    <items>
+        <general>
+            <enabled type="BooleanField">
+                <Default>0</Default>
+                <Required>Y</Required>
+            </enabled>
+            <listen_port type="PortField">
+                <Default>41821</Default>
+                <Required>Y</Required>
+            </listen_port>
+            <!-- Letters and digits only, at most 15: the value goes into
+                 /etc/rc.conf.d/openscale and must never need quoting. -->
+            <interface type="TextField">
+                <Default>OpenScale</Default>
+                <Required>Y</Required>
+                <Mask>/^[A-Za-z][A-Za-z0-9]{0,14}$/</Mask>
+                <ValidationMessage>Arayüz adı bir harfle başlamalı, yalnızca harf ve rakam içermeli, en fazla 15 karakter olmalı.</ValidationMessage>
+            </interface>
+            <memory_profile type="OptionField">
+                <Default>default</Default>
+                <Required>Y</Required>
+                <OptionValues>
+                    <default>Varsayılan</default>
+                    <low>Düşük bellek (32 MiB hedef)</low>
+                </OptionValues>
+            </memory_profile>
+        </general>
+    </items>
+</model>

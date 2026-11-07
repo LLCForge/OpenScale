@@ -1,0 +1,24 @@
+{
+    "##": "Scoop manifest template (#887); filled by scripts/package-manifests.sh (version, download mirror, SHA-256 from dist/<sürüm>/SHA256SUMS).",
+    "version": "@VERSION@",
+    "description": "Kendi sunucunuzda çalışan, telemetrisiz WireGuard mesh VPN (OpenScale).",
+    "homepage": "@MIRROR@/",
+    "license": "MIT",
+    "architecture": {
+        "64bit": {
+            "url": "@MIRROR@/@VERSION@/openscale-@VERSION@-windows-amd64.zip",
+            "hash": "@SHA256_WINDOWS_ZIP@",
+            "extract_dir": "openscale-@VERSION@-windows-amd64"
+        }
+    },
+    "bin": [
+        [
+            "openscale-windows-amd64.exe",
+            "openscale"
+        ]
+    ],
+    "notes": [
+        "Masaüstü servisini kurmak için yönetici PowerShell'de: install-windows.ps1 (aynı klasörde).",
+        "PowerShell modülü: Import-Module OpenScale (deploy/windows/OpenScale.psd1)."
+    ]
+}

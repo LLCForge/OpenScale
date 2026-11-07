@@ -1,0 +1,24 @@
+# Build context of deploy/docker/Dockerfile (BuildKit reads
+# <Dockerfile>.dockerignore next to the Dockerfile). Allowlist: only what
+# the Go build needs enters the context, so keys, network folders and
+# competitor clones can never end up in an image layer.
+*
+!go.mod
+!go.sum
+!VERSION
+!cmd
+!internal
+!tools
+!vendor
+!deploy/docker/entrypoint.sh
+
+# Never, even inside the allowed folders.
+**/*.key
+**/*.passphrase
+**/parola*.txt
+**/network.json
+**/history
+**/*_test.go
+**/testdata
+**/*.test
+**/.*.tmp-*

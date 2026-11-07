@@ -1,0 +1,8 @@
+# /etc/systemd/network/50-openscale.network (F-150, #309)
+# The OpenScale tunnel interface is configured by OpenScale itself;
+# systemd-networkd must not manage it.
+[Match]
+Name=OpenScale
+
+[Link]
+Unmanaged=yes

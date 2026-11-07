@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android TV başlatıcı afişi (#476, P08): 320x180dp, düz renk zemin ve
+     uygulamanın bildirim simgesi; bitmap varlığı gerektirmez. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <size android:width="320dp" android:height="180dp" />
+            <solid android:color="#FF0F3D57" />
+        </shape>
+    </item>
+    <item
+        android:width="96dp"
+        android:height="96dp"
+        android:drawable="@android:drawable/ic_lock_lock"
+        android:gravity="center" />
+</layer-list>

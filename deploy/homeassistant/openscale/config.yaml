@@ -1,0 +1,46 @@
+# OpenScale add-on for Home Assistant OS (#890, docs/homeassistant.md).
+# Not tested on a real Home Assistant installation.
+#
+# Privileges, kept to the minimum the tunnel needs:
+#   privileged NET_ADMIN   TUN interface, addresses, routes
+#   devices /dev/net/tun   the TUN device (no full_access, no docker_api)
+#   host_network           the tunnel must live in the host's network
+#                          namespace so Home Assistant itself is reachable
+#                          from the private network
+# No Supervisor or Home Assistant API role, no host PID, no extra maps:
+# the add-on keeps its keys in its own /data folder.
+name: OpenScale
+version: "1.0.0-beta.2"
+slug: openscale
+description: OpenScale WireGuard mesh VPN device for Home Assistant OS
+url: https://example.com/openscale
+arch:
+  - aarch64
+  - amd64
+  - armv7
+init: false
+startup: services
+boot: auto
+host_network: true
+privileged:
+  - NET_ADMIN
+devices:
+  - /dev/net/tun
+apparmor: true
+# Only to publish status and events to the Mosquitto add-on (#561);
+# "want" means the add-on also runs without an MQTT broker.
+services:
+  - mqtt:want
+options:
+  hostname: homeassistant
+  listen_port: 41821
+  memory_profile: low
+  mqtt_publish: false
+  mqtt_prefix: openscale
+schema:
+  invite_code: password?
+  hostname: match(^[a-z0-9][a-z0-9-]{0,62}$)
+  listen_port: port
+  memory_profile: list(low|default)
+  mqtt_publish: bool
+  mqtt_prefix: match(^[A-Za-z0-9_-]{1,64}(/[A-Za-z0-9_-]{1,64}){0,3}$)

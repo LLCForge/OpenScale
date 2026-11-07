@@ -1,0 +1,21 @@
+#!/bin/sh
+# prerm of the openscale Debian package: on removal, stop and disable the
+# units. On upgrade nothing is stopped; postinst restarts running units.
+set -e
+
+case "$1" in
+remove | deconfigure)
+	if [ -d /run/systemd/system ]; then
+		for u in openscale-coordinator.service openscale-device.service; do
+			systemctl disable --now "$u" >/dev/null 2>&1 || true
+		done
+	fi
+	;;
+upgrade | failed-upgrade) ;;
+*)
+	echo "prerm: bilinmeyen argüman '$1'" >&2
+	exit 1
+	;;
+esac
+
+exit 0

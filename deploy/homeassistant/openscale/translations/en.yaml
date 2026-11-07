@@ -1,0 +1,19 @@
+configuration:
+  invite_code:
+    name: Invite code
+    description: Invite code from the OpenScale panel, used once to join. Remove it after the device has joined.
+  hostname:
+    name: Device name
+    description: Suggested name of this device in the private network (lowercase letters, digits and hyphens).
+  listen_port:
+    name: UDP port
+    description: WireGuard port. Forward it on your router for direct connections; without it relays are used.
+  memory_profile:
+    name: Memory profile
+    description: low keeps memory use near 32 MiB; default suits larger machines.
+  mqtt_publish:
+    name: Publish to MQTT
+    description: Publish tunnel status and events to the Mosquitto add-on.
+  mqtt_prefix:
+    name: MQTT topic prefix
+    description: Topics are prefix/device/availability, /status and /event.

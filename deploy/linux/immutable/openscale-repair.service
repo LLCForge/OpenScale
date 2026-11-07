@@ -1,0 +1,26 @@
+# OpenScale self-repair on immutable Linux (#884, docs/degismez-linux.md).
+# Runs once per boot before the device: after a major image update it puts
+# back the program, units, enable links and SELinux label from the copies
+# in /var/lib/openscale/immutable (which the update does not touch).
+[Unit]
+Description=OpenScale self-repair after an OS image update
+After=local-fs.target systemd-modules-load.service
+Before=openscale-device.service
+ConditionPathExists=/var/lib/openscale/immutable/install.conf
+
+[Service]
+Type=oneshot
+# /bin/sh is the executable, so SELinux sees bin_t; the script itself is
+# only read from /var.
+ExecStart=/bin/sh /var/lib/openscale/immutable/openscale-repair.sh --boot
+TimeoutStartSec=120
+UMask=0077
+LimitCORE=0
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectHome=yes
+PrivateNetwork=yes
+RestrictAddressFamilies=AF_UNIX AF_NETLINK
+
+[Install]
+WantedBy=multi-user.target

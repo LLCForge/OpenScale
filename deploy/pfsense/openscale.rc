@@ -1,0 +1,86 @@
+#!/bin/sh
+#
+# PROVIDE: openscale
+# REQUIRE: NETWORKING syslogd
+# BEFORE: DAEMON
+# KEYWORD: shutdown
+#
+# OpenScale device on FreeBSD, pfSense and OPNsense (#885, ADR-0090,
+# docs/pfsense-opnsense.md). Installed as /usr/local/etc/rc.d/openscale.
+#
+# /etc/rc.conf.d/openscale (written by the OPNsense plugin, by hand on
+# FreeBSD and pfSense):
+#   openscale_enable="YES"
+#   openscale_listen_port="41821"      WireGuard UDP port
+#   openscale_interface="OpenScale"    tun interface name (max 15 chars)
+#   openscale_memory_profile="default" default or low (#392)
+# The state directory is fixed: /var/db/openscale (0700 root). Join first:
+#   openscale invite-join --state-dir /var/db/openscale --code @davet.txt
+#
+# The program runs under daemon(8), which restarts it after a crash and
+# sends its output to syslog (tag "openscale").
+
+. /etc/rc.subr
+
+name=openscale
+rcvar=openscale_enable
+desc="OpenScale WireGuard mesh VPN device"
+
+load_rc_config "$name"
+
+: "${openscale_enable:=NO}"
+: "${openscale_listen_port:=41821}"
+: "${openscale_interface:=OpenScale}"
+: "${openscale_memory_profile:=default}"
+
+openscale_state_dir=/var/db/openscale
+openscale_program=/usr/local/bin/openscale
+pidfile=/var/run/openscale.pid
+procname=/usr/sbin/daemon
+command=/usr/sbin/daemon
+start_precmd=openscale_prestart
+status_cmd=openscale_status
+
+openscale_prestart() {
+	case "$openscale_listen_port" in
+	'' | *[!0-9]*) err 1 "openscale_listen_port geçersiz: $openscale_listen_port" ;;
+	esac
+	if [ "$openscale_listen_port" -lt 1 ] || [ "$openscale_listen_port" -gt 65535 ]; then
+		err 1 "openscale_listen_port 1-65535 olmalı"
+	fi
+	case "$openscale_interface" in
+	'' | *[!A-Za-z0-9]*) err 1 "openscale_interface yalnızca harf ve rakam içerebilir" ;;
+	esac
+	[ "${#openscale_interface}" -le 15 ] || err 1 "openscale_interface en fazla 15 karakter"
+	case "$openscale_memory_profile" in
+	default | low) ;;
+	*) err 1 "openscale_memory_profile default veya low olmalı" ;;
+	esac
+	[ -x "$openscale_program" ] || err 1 "$openscale_program yok"
+
+	# The tun clone device (FreeBSD: if_tun, usually in GENERIC).
+	kldstat -q -m if_tun || kldload -n if_tun || err 1 "if_tun yüklenemedi"
+
+	install -d -m 0700 -o root -g wheel "$openscale_state_dir"
+	if [ ! -f "$openscale_state_dir/anchor.json" ]; then
+		err 1 "cihaz ağa katılmamış; önce: openscale invite-join --state-dir $openscale_state_dir --code @davet.txt"
+	fi
+
+	OPENSCALE_MEMORY_PROFILE=$openscale_memory_profile
+	export OPENSCALE_MEMORY_PROFILE
+	# -P: supervisor pid (what rc.subr signals); -R 5: restart after 5 s;
+	# -S -T: syslog with the tag openscale.
+	command_args="-P $pidfile -R 5 -S -T openscale -- $openscale_program up --state-dir $openscale_state_dir --listen-port $openscale_listen_port --interface $openscale_interface"
+}
+
+openscale_status() {
+	if [ -n "$(check_pidfile "$pidfile" "$procname")" ]; then
+		echo "$name çalışıyor (pid $(cat "$pidfile"))."
+		"$openscale_program" status --state-dir "$openscale_state_dir" 2>/dev/null | head -n 5 || true
+	else
+		echo "$name çalışmıyor."
+		return 1
+	fi
+}
+
+run_rc_command "$1"

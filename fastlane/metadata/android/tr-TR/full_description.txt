@@ -1,0 +1,24 @@
+OpenScale, tek sahibin kendi cihazlarını birbirine bağlayan kişisel bir WireGuard mesh VPN'idir. Bulut hesabı, telemetri, reklam ve Google hizmeti yoktur.
+
+<b>Güven modeli</b>
+<ul>
+<li>Ağ, yalnızca sahibin bilgisayarında duran bir kök anahtarla imzalanır. Koordinatör sunucusu ağ belgesini değiştiremez, cihaz ekleyemez veya çıkaramaz.</li>
+<li>Cihaz anahtarları Android Keystore ile şifrelenir (StrongBox varsa orada) ve yedeğe girmez.</li>
+<li>Kayıt isteği ve davet kodu QR kodla aktarılır; QR çözücü uygulamanın içindedir, kamera görüntüsü cihazdan çıkmaz.</li>
+</ul>
+
+<b>Özellikler</b>
+<ul>
+<li>Her zaman açık VPN ve "VPN olmadan bağlantıları engelle" ile kill switch</li>
+<li>Çıkış düğümü: internet trafiği evdeki bir cihaz üzerinden çıkar</li>
+<li>Mobil veri ve Wi-Fi politikası: ağa göre çıkış düğümü seçimi</li>
+<li>Uygulama bazlı bölünmüş tünel</li>
+<li>Biyometrik kilit: bağlantıyı kesmek ve ayar değiştirmek doğrulama ister</li>
+<li>Kayıp modu: sahip cihazı iptal edince uygulama anahtarlarını siler</li>
+<li>Pil dostu bağlantı: push servisi ve uyandırma kilidi yok</li>
+<li>Hızlı ayar kutucuğu ve bildirimde durum</li>
+</ul>
+
+Uygulama tek başına çalışmaz: sahibin OpenScale ağı (masaüstü programı ve koordinatör) gerekir.
+
+APK sahibin kendi anahtarıyla imzalanır; imza sertifikasının SHA-256 özeti uygulamanın ana ekranında görünür ve sahibin yayımladığı değerle karşılaştırılmalıdır.

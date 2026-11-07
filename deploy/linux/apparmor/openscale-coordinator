@@ -1,0 +1,79 @@
+# AppArmor profile of the OpenScale coordinator service (#886,
+# docs/apparmor-selinux.md). Install: deploy/linux/apparmor/install-apparmor.sh.
+#
+# Selected by systemd (AppArmorProfile= in
+# openscale-coordinator-apparmor.conf); no path attachment, because the
+# same program is the CLI and the device.
+#
+# Derived from deploy/linux/openscale-coordinator.service and the code:
+# the coordinator reads and writes only its state directory (it also
+# restricts itself with Landlock, ADR-0111), reads /proc for the system
+# report, listens on UDP 41820 and, when OPENSCALE_TCP_LISTEN is set, on a
+# TCP port (443 needs net_bind_service). It runs no programs, opens no
+# device and needs no other capability.
+#
+# Ships in complain mode; see openscale-device for when to enforce.
+
+abi <abi/3.0>,
+
+include <tunables/global>
+
+profile openscale-coordinator flags=(complain) {
+  include <abstractions/base>
+  include <abstractions/nameservice>
+
+  # Only for a TCP transport on a port below 1024.
+  capability net_bind_service,
+
+  network inet dgram,
+  network inet6 dgram,
+  network inet stream,
+  network inet6 stream,
+  network netlink raw,
+  network unix stream,
+  network unix dgram,
+
+  /usr/bin/openscale mr,
+  /usr/local/bin/openscale mr,
+  /var/lib/openscale/bin/openscale mr,
+
+  /var/lib/openscale/ r,
+  /var/lib/openscale/coordinator/ rw,
+  /var/lib/openscale/coordinator/** rwkl,
+  deny /var/lib/openscale/device/** rwklx,
+  /etc/openscale/coordinator.json r,
+  /etc/openscale/coordinator-seed/ r,
+  /etc/openscale/coordinator-seed/** r,
+  /run/credentials/openscale-coordinator.service/ r,
+  /run/credentials/openscale-coordinator.service/** r,
+
+  # System report on the devices page.
+  @{PROC}/meminfo r,
+  @{PROC}/uptime r,
+  @{PROC}/cpuinfo r,
+  @{PROC}/stat r,
+  @{PROC}/sys/kernel/osrelease r,
+  @{PROC}/sys/vm/overcommit_memory r,
+  @{PROC}/@{pid}/mountinfo r,
+  /sys/kernel/mm/transparent_hugepage/hpage_pmd_size r,
+  /sys/fs/cgroup/** r,
+  /etc/os-release r,
+  /usr/lib/os-release r,
+
+  /run/systemd/notify w,
+
+  # It never runs another program (no x rule at all) and never touches a
+  # network device. The deny rules below match the unit's sandbox, so they
+  # change nothing while complain mode is on.
+  deny /dev/net/tun rw,
+  deny @{HOME}/** rwklx,
+  deny /root/** rwklx,
+  deny /etc/shadow* rwklx,
+  deny capability net_admin,
+  deny capability net_raw,
+  deny capability sys_admin,
+  deny capability sys_module,
+  deny capability dac_override,
+
+  include if exists <local/openscale-coordinator>
+}

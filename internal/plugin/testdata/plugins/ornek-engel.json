@@ -1,0 +1,1 @@
+{"abi":1,"name":"ornek-engel","version":"1.0.0","description":"Örnek eklenti: .example üst alanının altındaki bütün adları engeller.","hooks":["dns"],"data":["dns_name"],"on_error":"pass"}

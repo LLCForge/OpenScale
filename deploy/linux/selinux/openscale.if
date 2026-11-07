@@ -1,0 +1,21 @@
+## <summary>OpenScale WireGuard mesh VPN (device and coordinator).</summary>
+
+########################################
+## <summary>
+##	Read the OpenScale configuration in /etc/openscale.
+## </summary>
+## <param name="domain">
+##	<summary>
+##	Domain allowed access.
+##	</summary>
+## </param>
+#
+interface(`openscale_read_config',`
+	gen_require(`
+		type openscale_etc_t;
+	')
+
+	files_search_etc($1)
+	list_dirs_pattern($1, openscale_etc_t, openscale_etc_t)
+	read_files_pattern($1, openscale_etc_t, openscale_etc_t)
+')

@@ -1,0 +1,6 @@
+# Base images of the add-on (#890). Pin them by digest for a release
+# (docker buildx imagetools inspect <image>).
+build_from:
+  aarch64: ghcr.io/home-assistant/aarch64-base:3.22
+  amd64: ghcr.io/home-assistant/amd64-base:3.22
+  armv7: ghcr.io/home-assistant/armv7-base:3.22

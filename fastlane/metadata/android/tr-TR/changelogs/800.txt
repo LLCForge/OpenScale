@@ -1,0 +1,6 @@
+- QR kodla kayıt ve davet okuma (uygulama içi çözücü)
+- Biyometrik kilit
+- Mobil veri ve Wi-Fi politikası
+- Uygulama bazlı bölünmüş tünel
+- Kayıp modu
+- Hızlı ayar kutucuğu ve bildirimde durum

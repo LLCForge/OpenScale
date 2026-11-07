@@ -1,0 +1,227 @@
+// English texts (#224), keyed by the Turkish source text. See lib/i18n/i18n.tsx.
+
+export const enShell: Record<string, string> = {
+  // Shell: navigation (shell/nav.ts)
+  "Uçtan uca gönder": "End-to-end send",
+  Karantina: "Quarantine",
+  "Engelleme ve İzleme": "Blocking and Monitoring",
+  "Engelleme ve eklentiler": "Blocking and plugins",
+  İzleme: "Monitoring",
+  Yöneticiler: "Admins",
+  "Acil durum": "Emergency",
+  Kanarya: "Canary",
+  "Giriş ve gizlilik": "Sign-in and privacy",
+  "Cihaz güvenliği": "Device security",
+  Duruş: "Posture",
+  "Ağ gizliliği": "Network privacy",
+
+  // Shell: admin mode chip and discreet title (shell/admin-mode-chip.tsx)
+  "Yönetici kipi açık (donanım anahtarı takılı), {left} kaldı": "Admin mode on (hardware key plugged in), {left} left",
+  "Yönetici kipi açık, {left} kaldı": "Admin mode on, {left} left",
+  "Yönetici anahtarı takılı değil (salt okunur)": "Admin key not plugged in (read-only)",
+  "Yönetici kipi kapalı (salt okunur)": "Admin mode off (read-only)",
+  "Yönetici kipi · {left}": "Admin mode · {left}",
+  "Salt okunur": "Read-only",
+  bağlantı: "connection",
+
+  // Shell: YubiKey admin mode (shell/token-sign.tsx)
+  "yönetici yetkisi: {name}": "admin grant: {name}",
+  "kök anahtar": "root key",
+  "YubiKey yönetici kipi açık ({who}, anahtar {key}), {left} sonra kapanır":
+    "YubiKey admin mode on ({who}, key {key}), closes in {left}",
+  'YubiKey takılı. Tepsi menüsünden "Yönetici kipini aç" seçerseniz bu değişikliği parola yerine anahtarla imzalayabilirsiniz.':
+    "A YubiKey is plugged in. Choose \"Turn on admin mode\" in the tray menu to sign this change with the key instead of the passphrase.",
+  "YubiKey yönetici kipi açık (anahtar": "YubiKey admin mode on (key",
+  "Onay tepside istenir; jetona dokunmanız gerekebilir.": "The tray asks for approval; you may need to touch the token.",
+  "YubiKey ile imzala": "Sign with YubiKey",
+
+  // Control Center overview (control-center/overview.tsx)
+  "Kurallara git": "Go to rules",
+  "DNS ayarına git": "Go to DNS settings",
+  "Geçmişi incele": "Review the history",
+  "{names} ve {count} cihaz daha": "{names} and {count} more device|{names} and {count} more devices",
+  "Yalnızca bu bilgisayarda geçerli; ağ belgesini değiştirmez.": "Applies only to this computer; it does not change the network document.",
+  "Erişim haritası": "Access map",
+  "Seçili cihazın imzalı kurallarla hangi cihazlara ulaşabildiği; kural dışı her şey reddedilir.":
+    "Which devices the selected device can reach under the signed rules; everything outside the rules is denied.",
+  "{name} (bağlanıyor)": "{name} (connecting)",
+  Kullanılmıyor: "Not used",
+  "{count} cihaz hazır": "{count} device ready|{count} devices ready",
+  "Ağ durumu": "Network status",
+  "Ağ belgesi v{version}": "Network document v{version}",
+  "Erişim kuralı": "Access rules",
+  "{count} cihaz onay bekliyor": "{count} device waiting for approval|{count} devices waiting for approval",
+  "{names}. Kısa kod yeni bilgisayardakiyle aynıysa onayla.": "{names}. Approve if the short code matches the one on the new computer.",
+  "{count} ayrılma isteği bekliyor": "{count} leave request waiting|{count} leave requests waiting",
+  "{names} ağdan ayrılmak istiyor; bir imzayla belgeden çıkar.": "{names} wants to leave the network; remove it from the document with one signature.",
+  "{name} iki yerde birden görüldü": "{name} was seen in two places at once",
+  "Uç nokta {count} kez değişti; anahtar kopyalanmış olabilir.":
+    "The endpoint changed {count} time; the key may have been copied.|The endpoint changed {count} times; the key may have been copied.",
+  "{count} cihazın üyeliği doldu": "{count} device's membership has expired|{count} devices' memberships have expired",
+  "{names} yeni bağlantı kuramaz.": "{names} cannot make new connections.",
+  Uzat: "Extend",
+  "{count} cihazın üyeliği 30 gün içinde doluyor":
+    "{count} device's membership expires within 30 days|{count} devices' memberships expire within 30 days",
+  "Hemen ilgilen": "Needs attention now",
+  "Hemen ilgilen: {count} sorun": "Needs attention now: {count} problem|Needs attention now: {count} problems",
+  "Acil sorunlar": "Urgent problems",
+  "Dikkat gerekenler": "Needs attention",
+  "Sağlık uyarıları, bekleyen onaylar ve süresi dolan üyelikler.": "Health warnings, pending approvals and expiring memberships.",
+  "Başka uyarı yok": "No other warnings",
+  "Her şey yolunda": "All good",
+  "Yukarıdakiler dışında bekleyen bir şey yok.": "Nothing else is waiting besides the above.",
+  "Uyarı, bekleyen onay veya süresi dolan üyelik yok.": "No warnings, pending approvals or expiring memberships.",
+  "İnternet trafiği artık {name} üzerinden çıkıyor.": "Internet traffic now leaves through {name}.",
+  "İnternet trafiği yeniden doğrudan çıkıyor.": "Internet traffic leaves directly again.",
+  "İnternet trafiği {name} üzerinden çıkıyor.": "Internet traffic leaves through {name}.",
+  "İnternet trafiği {name} üzerinden çıkacak; yollar kuruluyor.": "Internet traffic will leave through {name}; the routes are being set up.",
+  "Trafik kilidi (kill switch) açık.": "The kill switch is on.",
+  "Ağda çıkış düğümü yok; internet trafiği doğrudan bu bilgisayarın bağlantısından çıkıyor.":
+    "The network has no exit node; internet traffic leaves directly through this computer's connection.",
+  "İnternet trafiği doğrudan bu bilgisayarın bağlantısından çıkıyor.": "Internet traffic leaves directly through this computer's connection.",
+  "Ayrıntılı ayarlar": "Detailed settings",
+  Kullanma: "Don't use",
+  "İnternet trafiği nereden çıksın?": "Where should internet traffic leave?",
+  "Doğrudan bu bilgisayardan": "Directly from this computer",
+  "Şu an yanıt vermiyor": "Not answering right now",
+  "Son etkinlik": "Recent activity",
+  "İmzalı ağ belgesinin son sürümleri.": "The latest versions of the signed network document.",
+  "Tümünü gör": "See all",
+  "Belge geçmişinde sorun bulundu; Etkinlik sayfasına bak.": "A problem was found in the document history; see the Activity page.",
+  "Henüz imzalı belge sürümü yok.": "No signed document versions yet.",
+  "Son belge sürümleri": "Latest document versions",
+
+  // Control Center access map (control-center/control-center.tsx, build-graph.ts, graph-nodes.tsx)
+  "Ağın henüz boş": "Your network is still empty",
+  Giden: "Outgoing",
+  Gelen: "Incoming",
+  Liste: "List",
+  Yön: "Direction",
+  "İmzalı belge": "Signed document",
+  "Harita yalnızca görseldir; aynı bilgi Liste görünümünde tablo olarak var.":
+    "The map is visual only; the same information is available as a table in the List view.",
+  "{name} için giden {count} kural.": "{count} outgoing rule for {name}.|{count} outgoing rules for {name}.",
+  "{name} için gelen {count} kural.": "{count} incoming rule for {name}.|{count} incoming rules for {name}.",
+  "{name} için giden kural yok; bu yöndeki tüm trafik reddedilir.":
+    "No outgoing rules for {name}; all traffic in this direction is denied.",
+  "{name} için gelen kural yok; bu yöndeki tüm trafik reddedilir.":
+    "No incoming rules for {name}; all traffic in this direction is denied.",
+  "Kural ekle": "Add rule",
+  Ulaşabildiği: "Can reach",
+  "Ona ulaşabilen": "Reachable from",
+  "{name} için giden erişim": "Outgoing access for {name}",
+  "{name} için gelen erişim": "Incoming access for {name}",
+  "Protokol ve port": "Protocol and port",
+  "Yalnızca kendisi": "Only itself",
+  "tüm portlar": "all ports",
+  "{count} cihaz": "{count} device|{count} devices",
+
+  // Remote desktop connect dialog (rdesk/rdesk-connect.tsx)
+  Görüntü: "Video",
+  "Klavye ve fare": "Keyboard and mouse",
+  Pano: "Clipboard",
+  Dosyalar: "Files",
+  Ses: "Audio",
+  "Bu sürümde ses taşınmıyor.": "Audio is not carried in this version.",
+  "Gizlilik perdesi": "Privacy curtain",
+  "Karşı ekranı karartır ve yerel girdiyi kilitler.": "Blanks the remote screen and locks local input there.",
+  "Uzak masaüstüne bağlan": "Connect to remote desktop",
+  "Hesap parolasını girin.": "Enter the account password.",
+  "Kullanıcı adı veya parola yanlış.": "Wrong user name or password.",
+  "Çok fazla hatalı deneme; biraz sonra yeniden deneyin.": "Too many failed attempts; try again a little later.",
+  "Hedef cihaz hesap istiyor. Kullanıcı adı ve parolayı girin.": "The target device asks for an account. Enter the user name and password.",
+  "Bağlantı başlatılamadı.": "Could not start the connection.",
+  "{device} uzak masaüstü": "{device} remote desktop",
+  "Görüntü uçtan uca şifreli gelir. Karşı cihaz bağlantıyı imzalı kurala göre denetler; ekranında bağlı olduğunuzu gösteren silinemeyen bir çerçeve görünür.":
+    "The picture arrives end-to-end encrypted. The remote device checks the connection against the signed rule and shows a frame that cannot be removed, telling its user you are connected.",
+  "Bağlantı hazır. Görüntüleyiciyi bir dakika içinde açın; açılmazsa oturum kapanır.":
+    "The connection is ready. Open the viewer within a minute, or the session closes.",
+  "Görüntüleyici ayrı bir pencerede açıldı; pencereyi kapatınca bağlantı biter.":
+    "The viewer opened in a separate window; closing the window ends the connection.",
+  "Doğrulama kodu:": "Verification code:",
+  "Karşı ekrandaki kodla aynı olmalı.": "It must match the code on the remote screen.",
+  "Görüntüleyiciyi aç": "Open the viewer",
+  "Bu sürümde uzak masaüstü panelden başlatılamıyor. Komut satırından bağlanabilirsiniz:":
+    "Remote desktop cannot be started from the panel in this version. You can connect from the command line:",
+  "Komutu kopyala": "Copy command",
+  "Oturum türü": "Session type",
+  Yönet: "Control",
+  "Yalnızca izle": "View only",
+  "Klavye ve fare gönderilir.": "Keyboard and mouse are sent.",
+  "Hiçbir girdi gönderilmez.": "No input is sent.",
+  "Bu oturumda izin verilenler": "Allowed in this session",
+  "Kural izin vermiyorsa karşı cihaz seçimi yok sayar.": "If the rule does not allow it, the remote device ignores the choice.",
+  "Hedefin {os} hesabı": "Target's {os} account",
+  "Hedef cihaz giriş istiyorsa doldurun; istemiyorsa boş bırakın.":
+    "Fill this in if the target device asks for a sign-in; otherwise leave it empty.",
+  "Kullanıcı adı": "User name",
+  Parola: "Password",
+  Bağlan: "Connect",
+
+  // Remote desktop viewer window (rdesk/rdesk-viewer.tsx)
+  "Oturum kapandı.": "The session closed.",
+  "Bağlantı kapandı. Bilet bir dakika geçerlidir; panelden yeniden bağlanın.":
+    "The connection closed. A ticket is valid for one minute; connect again from the panel.",
+  "Pano metni çok uzun; en çok 8 KB gönderilebilir.": "The clipboard text is too long; at most 8 KB can be sent.",
+  "Pano metni karşıya gönderildi. Karşı cihaz pano iznini vermediyse yok sayılır.":
+    "The clipboard text was sent. It is ignored if the remote device did not allow the clipboard.",
+  "Pano okunamadı. Tarayıcı izni gerekiyor olabilir.": "Could not read the clipboard. The browser may need permission.",
+  Yönetiliyor: "Controlling",
+  "Yalnızca izleniyor": "View only",
+  "Karşı cihaz kaydediyor": "The remote device is recording",
+  "Doğrulama kodu": "Verification code",
+  "Panomu gönder": "Send my clipboard",
+  "Bağlantıyı kes": "Disconnect",
+  "Uzak ekran": "Remote screen",
+  "Görüntü bekleniyor...": "Waiting for the picture...",
+  "Görüntüleyici bileti yok": "No viewer ticket",
+  "Oturum bitti": "Session ended",
+  'Bu pencereyi cihaz sayfasındaki "Uzak masaüstüne bağlan" düğmesiyle açın.':
+    "Open this window with the \"Connect to remote desktop\" button on the device page.",
+  "Uzak ekran; klavye ve fare karşıya gönderilir": "Remote screen; keyboard and mouse are sent to it",
+
+  // SSH terminal (terminal/ssh-terminal.tsx)
+  "Kullanıcı adı veya parola kabul edilmedi.": "The user name or password was not accepted.",
+  "Çok fazla hatalı parola; bir süre bekleyin.": "Too many wrong passwords; wait a while.",
+  "Cihaza bağlanılamadı. Cihazın açık olduğunu ve SSH kuralının bu bilgisayara izin verdiğini denetleyin.":
+    "Could not connect to the device. Check that the device is on and that the SSH rule allows this computer.",
+  "{device} terminali": "{device} terminal",
+  "Bağlantı tünel içinden kurulur; parola yalnızca bu oturumu açmak için bir kez gönderilir ve saklanmaz.":
+    "The connection runs through the tunnel; the password is sent once, only to open this session, and is not stored.",
+  "Geçerli bir kullanıcı adı girin.": "Enter a valid user name.",
+  "Port 1 ile 65535 arasında olmalı.": "The port must be between 1 and 65535.",
+  "Parola gerekli.": "Password required.",
+  "Terminal alanı hazır değil.": "The terminal area is not ready.",
+  "Oturum kapandı": "Session closed",
+  "Bağlantı kurulamadı.": "Could not connect.",
+  "Kayıt silindi. Bir sonraki bağlantıda yeni anahtar kaydedilecek; parmak izini cihazdakiyle karşılaştırın.":
+    "The record was deleted. The new key is saved on the next connection; compare its fingerprint with the one on the device.",
+  "Kayıt silinemedi.": "Could not delete the record.",
+  "Sunucu anahtarı değişti!": "The server key has changed!",
+  "Kayıtlı:": "Saved:",
+  "gelen:": "received:",
+  "Ortadaki saldırı olabilir. Bağlantı kurulmadı.": "This may be a man-in-the-middle attack. No connection was made.",
+  "Beklenen bir değişiklikse kaydı sil": "Delete the record if the change was expected",
+  "Bu cihazın sunucu anahtarı ilk kez kaydedildi:": "This device's server key was saved for the first time:",
+  "Sunucu anahtarı ağın sertifikasıyla doğrulandı.": "The server key was verified with the network's certificate.",
+  "Beş hatalı denemeden sonra bu bilgisayar 15 dakika engellenir.": "After five failed attempts this computer is blocked for 15 minutes.",
+  "Bağlanıyor…": "Connecting…",
+  "Yeniden bağlan": "Reconnect",
+
+  // Error code help (error-code.tsx)
+  "Bu kod kalıcıdır; yardım isterken bu kodu söyle.": "This code is permanent; mention it when you ask for help.",
+  "{code} kodunu kopyala": "Copy the code {code}",
+  "Nasıl çözülür?": "How to fix it?",
+  "Bu kod artık oluşmuyor; eski iletiler için tutuluyor.": "This code no longer occurs; it is kept for old messages.",
+  "Bu kodun açıklaması panelle birlikte gelir; internet gerekmez.": "This code's description comes with the panel; no internet needed.",
+  Neden: "Cause",
+  "Ne yapmalı": "What to do",
+  "Bakılacak komutlar": "Commands to check",
+  "Açıklama yükleniyor": "Loading the description",
+
+  // Copy button and notice bar (copy-field.tsx, notice-bar.tsx)
+  "Kopyalanan kod güvenlik için panodan silindi.": "For security, the copied code was removed from the clipboard.",
+  "Kod panoda. İşiniz bitince panoyu temizleyin; tarayıcı izin verirse 1 dakika sonra kendiliğinden silinir.":
+    "The code is on the clipboard. Clear the clipboard when you are done; if the browser allows it, it is removed by itself after 1 minute.",
+  "Bildirimi kapat": "Dismiss notice",
+}

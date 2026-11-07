@@ -1,0 +1,10 @@
+#!/bin/sh
+# OpenScale AppImage entry point (#502, ADR-0162). Runs the single
+# openscale program inside the image with the given arguments. The tunnel
+# needs root: sudo ./OpenScale-<V>-x86_64.AppImage --appimage-extract-and-run up
+# (FUSE is often unavailable to root; extract-and-run needs no FUSE).
+HERE=$(dirname "$(readlink -f "$0")")
+if [ $# -eq 0 ]; then
+	set -- help
+fi
+exec "$HERE/usr/bin/openscale" "$@"

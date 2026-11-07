@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">OpenScale</string>
+    <string name="channel_name">VPN bağlantısı</string>
+    <string name="notif_connected">OpenScale bağlı</string>
+    <string name="notif_connecting">OpenScale bağlanıyor</string>
+    <string name="notif_blocked">OpenScale bağlı değil: trafik engelleniyor</string>
+    <string name="status_title">Durum</string>
+    <string name="key_create">Cihaz anahtarı oluştur</string>
+    <string name="key_show">Kayıt isteğini göster</string>
+    <string name="key_copy">Kayıt isteğini kopyala</string>
+    <string name="key_hint">Yönetici bilgisayarda: openscale device add &lt;istek&gt;. Parmak izini iki ekranda karşılaştırın.</string>
+    <string name="join_bundle">Katılım paketi (osjoin1.…)</string>
+    <string name="join_fp">Kök anahtar parmak izi</string>
+    <string name="join">Ağa katıl</string>
+    <string name="exit_node">Çıkış düğümü (boş: yalnızca ağ trafiği)</string>
+    <string name="battery">Pil dostu bağlantı (yalnızca trafik varken canlı tut)</string>
+    <string name="connect">Bağlan</string>
+    <string name="disconnect">Bağlantıyı kes</string>
+    <string name="always_on">Her zaman açık VPN ayarları</string>
+    <string name="always_on_help">Kill switch Android ayarıdır: Ayarlar &gt; Ağ &gt; VPN &gt; OpenScale &gt; \"Her zaman açık VPN\" ve \"VPN olmadan bağlantıları engelle\". Engelleme yalnızca çıkış düğümü seçiliyken anlamlıdır; çıkış düğümü yokken açılırsa ağ dışındaki internet trafiği de engellenir.</string>
+    <string name="always_on_state">Her zaman açık: %1$s, engelleme: %2$s</string>
+    <string name="yes">açık</string>
+    <string name="no">kapalı</string>
+    <string name="unknown">bilinmiyor (VPN çalışmıyor)</string>
+    <string name="err_api">Go çekirdeği bu uygulama sürümüyle uyumsuz.</string>
+
+    <!-- P27: Android ekleri -->
+    <string name="save">Kaydet</string>
+    <string name="notif_connected_peers">Bağlı · %1$d eş</string>
+    <string name="notif_connected_exit">Bağlı · çıkış: %1$s · %2$d eş</string>
+    <string name="notif_error">Bağlı değil: %1$s</string>
+    <string name="tile_on">Bağlı</string>
+    <string name="tile_off">Kapalı</string>
+    <string name="tile_exit">Çıkış: %1$s</string>
+
+    <string name="scan">QR kodu okut (davet, katılım paketi, parmak izi)</string>
+    <string name="scan_hint">Sahibin ekranındaki QR kodunu çerçeveye alın. Görüntü cihazdan çıkmaz.</string>
+    <string name="scan_no_permission">Kamera izni verilmedi; kodu elle yapıştırabilirsiniz.</string>
+    <string name="scan_no_camera">Kamera açılamadı.</string>
+    <string name="scan_unknown">Okunan kod bir OpenScale kodu değil.</string>
+    <string name="scan_bundle">Katılım paketi okundu. Kök parmak izini sahibin ekranından yazıp \"Ağa katıl\"a basın.</string>
+    <string name="scan_fp">Kök parmak izi okundu. Sahibin ekranındakiyle aynı olduğunu kontrol edin.</string>
+    <string name="key_qr_desc">Kayıt isteğinin QR kodu</string>
+    <string name="key_request_text">%1$s\n\nParmak izi: %2$s\nKısa doğrulama kodu: %3$s\n\nYönetici bilgisayarda: openscale device add --request-image &lt;fotoğraf&gt; veya isteği yapıştırın; kodu iki ekranda karşılaştırın.</string>
+
+    <string name="invite_title">Davet kodu</string>
+    <string name="invite_confirm">Ağ: %1$s\nKök parmak izi: %2$s\nKök doğrulama kodu: %3$s\nKoordinatör: %4$s\n\nBu değerleri sahibin ekranındakilerle karşılaştırın. Eşleşmiyorsa katılmayın.</string>
+    <string name="invite_need_key">Önce cihaz anahtarı oluşturun.</string>
+    <string name="invite_sending">Kayıt isteği koordinatöre gönderiliyor…</string>
+    <string name="invite_waiting">Sahibin onayı bekleniyor. Panelde görünen kod: %1$s\nKısa doğrulama kodu: %2$s</string>
+    <string name="invite_joined">Ağa katılındı: %1$s</string>
+
+    <string name="bio_lock">Biyometrik kilit (kesme, çıkış düğümü, politika ve uygulama seçimi doğrulama ister)</string>
+    <string name="bio_enable">Biyometrik kilidi aç</string>
+    <string name="bio_disable">Biyometrik kilidi kapat</string>
+    <string name="bio_failed">Doğrulama başarısız.</string>
+    <string name="bio_need_lock">Biyometrik kilit için cihazda ekran kilidi (PIN, desen veya parola) olmalı.</string>
+    <string name="exit_change">Çıkış düğümünü değiştir</string>
+
+    <string name="policy_title">Mobil veri ve Wi-Fi politikası</string>
+    <string name="policy_enabled">Ağa göre çıkış düğümü seç</string>
+    <string name="policy_trusted">Güvenilen Wi-Fi adları (virgülle; bu ağlarda çıkış düğümü yok)</string>
+    <string name="policy_wifi_exit">Diğer Wi-Fi ağlarında çıkış düğümü (boş: elle seçilen)</string>
+    <string name="policy_cell_exit">Mobil veride çıkış düğümü (boş: elle seçilen)</string>
+    <string name="policy_help">Kurallar sırayla denenir; eşleşme yoksa elle seçilen çıkış düğümü kullanılır. Wi-Fi adı doğrulanmaz: aynı adlı sahte bir ağ çıkış düğümünü kapattırabilir. Adı okumak için Android konum izni ister; ad cihazdan çıkmaz.</string>
+    <string name="policy_invalid">Politika geçersiz.</string>
+    <string name="policy_warnings">Politika uyarıları</string>
+
+    <string name="apps_title">Uygulama bazlı bölme</string>
+    <string name="apps_all">Bütün uygulamalar VPN\'i kullanır</string>
+    <string name="apps_include">Yalnızca seçilen uygulamalar</string>
+    <string name="apps_exclude">Seçilenler hariç bütün uygulamalar</string>
+    <string name="apps_help">Hariç tutulan uygulamalar çıkış düğümünü de kullanmaz. \"VPN olmadan bağlantıları engelle\" açıkken hariç uygulamaların bağlantısı kesilebilir.</string>
+    <string name="apps_need_one">En az bir uygulama seçin.</string>
+    <string name="apps_none_installed">Seçilen uygulamaların hiçbiri kurulu değil; bağlanılmadı.</string>
+
+    <string name="lost_wiped">Bu cihaz ağdan iptal edilmiş: cihaz anahtarı ve ağ belgesi silindi. Yeniden katılmak için yeni anahtar oluşturun.</string>
+    <!-- P08: mobil ve ekran gizliliği -->
+    <string name="nfc_unavailable">Bu cihazda NFC yok veya kapalı.</string>
+    <string name="nfc_share">NFC ile davet paylaş</string>
+    <string name="nfc_share_hint">Davet kodu</string>
+    <string name="nfc_share_help">Kod 60 saniye boyunca ve yalnızca bir kez okunabilir. Yeni telefonda \"NFC ile davet al\"a basın ve telefonların arkalarını dokundurun. Yeni telefon katılmadan önce kök parmak izini sizin ekranınızla karşılaştırmalıdır.</string>
+    <string name="nfc_share_start">Dokundurarak paylaş</string>
+    <string name="nfc_share_waiting">Yeni telefonu dokundurun… Ekran kilidi açık kalmalı.</string>
+    <string name="nfc_share_done">Davet aktarıldı; kod bu telefonun belleğinden silindi.</string>
+    <string name="nfc_share_expired">Süre doldu; kod bu telefonun belleğinden silindi.</string>
+    <string name="nfc_receive">NFC ile davet al</string>
+    <string name="nfc_receive_waiting">Daveti paylaşan telefona dokundurun.</string>
+    <string name="nfc_service_desc">OpenScale davet aktarımı</string>
+    <string name="usage_month">Bu ay OpenScale trafiği: mobil veri %1$s MB, Wi-Fi %2$s MB</string>
+    <string name="policy_trusted_ids">Güvenilen ağ kimlikleri (konum izni gerekmez; bu ağlarda çıkış düğümü yok)</string>
+    <string name="policy_add_here">Bulunduğum ağı ekle</string>
+    <string name="policy_no_identity">Bu ağ tanınamadı (Wi-Fi veya kablolu ağa bağlı değil ya da ağ geçidi yok).</string>
+    <string name="widget_desc">Bağlantı durumu ve tek dokunuşla bağlan/kes</string>
+    <string name="tv_exit_title">Çıkış düğümü</string>
+    <string name="tv_no_exit">Çıkış düğümü yok (yalnızca ağ trafiği)</string>
+    <string name="tv_selected">%1$s (seçili)</string>
+    <string name="tv_not_joined">Henüz bir ağa katılınmadı.</string>
+    <string name="tv_register_title">Kayıt</string>
+    <string name="tv_register">Kayıt isteğini QR olarak göster</string>
+    <string name="tv_request_text">Kayıt isteği QR kodunda. Parmak izi: %1$s\nKısa doğrulama kodu: %2$s\nYönetici bilgisayarda: openscale device add --request-image &lt;fotoğraf&gt;</string>
+
+    <string name="sign_cert">APK imza sertifikası (SHA-256), sahibin yayımladığıyla karşılaştırın:\n%1$s</string>
+</resources>

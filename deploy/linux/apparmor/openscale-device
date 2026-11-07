@@ -1,0 +1,188 @@
+# AppArmor profile of the OpenScale device service (#886,
+# docs/apparmor-selinux.md). Install: deploy/linux/apparmor/install-apparmor.sh.
+#
+# The profile has no path attachment: the same program is also the CLI
+# and the coordinator, so systemd selects it through AppArmorProfile= in
+# openscale-device-apparmor.conf. Commands typed by the owner stay
+# unconfined.
+#
+# Derived from the code (internal/osnet, internal/service, internal/sysinfo,
+# deploy/linux/openscale-device.service):
+#   - state:  /var/lib/openscale/device (keys, document, upstream profiles),
+#             /var/lib/openscale/killswitch.json (boot restore),
+#             /etc/openscale (device.json, release-root.pub; read only)
+#   - device: /dev/net/tun
+#   - tools:  ip, nft, iptables/ip6tables (fallback), resolvectl,
+#             resolvconf, sysctl, systemctl (kill switch boot unit), nmcli
+#             and iwgetid (Wi-Fi detection), firewall-cmd and ufw (host
+#             firewall check); all from root-owned system folders
+#             (internal/osnet/toolpath_unix.go), run without a shell
+#   - DNS:    /etc/resolv.conf and its two backups when no
+#             systemd-resolved exists (internal/osnet/dns_resolvconf.go)
+#   - kernel: /proc/sys/net (forwarding for the exit node), /proc/net,
+#             /sys/class/net, /sys/fs/cgroup (split tunnel)
+#   - helper: the program itself again as "nobody" (internal/privsep)
+#   - network: its UDP port (41821 by default) and outgoing UDP/TCP, the
+#             local API on 127.0.0.1, netlink, ICMP (NET_RAW, ping)
+#
+# It ships in complain mode: violations are logged, nothing is blocked.
+# Switch to enforce only after a week without new "ALLOWED" lines in the
+# journal (journalctl -k | grep openscale-device).
+
+abi <abi/3.0>,
+
+include <tunables/global>
+
+profile openscale-device flags=(complain) {
+  include <abstractions/base>
+  include <abstractions/nameservice>
+  include <abstractions/ssl_certs>
+
+  # The same two capabilities the unit grants. setuid/setgid only for the
+  # document parser helper (#161, internal/privsep): the program starts
+  # itself again as "nobody" under Landlock and seccomp; without these it
+  # parses in-process and logs that.
+  capability net_admin,
+  capability net_raw,
+  capability setuid,
+  capability setgid,
+
+  network inet dgram,
+  network inet6 dgram,
+  network inet stream,
+  network inet6 stream,
+  network inet raw,
+  network inet6 raw,
+  network netlink raw,
+  network netlink dgram,
+  network unix stream,
+  network unix dgram,
+
+  # The program itself (package, installer or immutable layout); ix for
+  # the parser helper, which stays in this profile.
+  /usr/bin/openscale mrix,
+  /usr/local/bin/openscale mrix,
+  /var/lib/openscale/bin/openscale mrix,
+
+  /dev/net/tun rw,
+
+  # State. The coordinator's directory on the same host stays out.
+  /var/lib/openscale/ r,
+  /var/lib/openscale/device/ rw,
+  /var/lib/openscale/device/** rwkl,
+  /var/lib/openscale/killswitch.json rw,
+  /var/lib/openscale/.killswitch.json.tmp-* rw,
+  deny /var/lib/openscale/coordinator/** rwklx,
+  /etc/openscale/ r,
+  /etc/openscale/** r,
+  /etc/default/openscale-device r,
+
+  # Kill switch boot unit (internal/osnet/killswitch_linux.go).
+  /etc/systemd/system/openscale-killswitch.service rw,
+  /etc/systemd/system/.openscale-killswitch.service.tmp-* rw,
+  /etc/systemd/system/*.wants/openscale-killswitch.service rwl,
+
+  # DNS without systemd-resolved (resolv.conf and the two backups).
+  /etc/resolv.conf rw,
+  /etc/.resolv.conf.tmp-* rw,
+  /etc/resolv.conf.openscale-orig rw,
+  /etc/resolv.conf.openscale-link rw,
+  /run/systemd/resolve/ r,
+  /run/systemd/resolve/** rw,
+  /run/resolvconf/ rw,
+  /run/resolvconf/** rw,
+  /etc/nsswitch.conf r,
+
+  # System information and diagnostics (read only).
+  /etc/os-release r,
+  /usr/lib/os-release r,
+  @{PROC}/sys/kernel/osrelease r,
+  @{PROC}/sys/kernel/arch r,
+  @{PROC}/stat r,
+  @{PROC}/cpuinfo r,
+  @{PROC}/meminfo r,
+  @{PROC}/uptime r,
+  @{PROC}/device-tree/model r,
+  @{PROC}/1/cgroup r,
+  @{PROC}/@{pid}/mountinfo r,
+  @{PROC}/@{pid}/net/** r,
+  @{PROC}/net/** r,
+  @{PROC}/sys/net/** rw,
+  @{PROC}/sys/vm/overcommit_memory r,
+  /sys/kernel/mm/transparent_hugepage/hpage_pmd_size r,
+  /sys/class/net/ r,
+  /sys/class/net/** r,
+  /sys/devices/** r,
+  # Split tunnel: per-application cgroup (internal/osnet/splittunnel_linux.go).
+  /sys/fs/cgroup/ r,
+  /sys/fs/cgroup/** rw,
+
+  # sd_notify (Type=notify) and the system bus.
+  /run/systemd/notify w,
+  /run/dbus/system_bus_socket rw,
+  /run/xtables.lock rwk,
+
+  # Tools, inheriting this profile (no shell, no PATH lookup).
+  /{usr/,}{s,}bin/ip ix,
+  /{usr/,}{s,}bin/nft ix,
+  /{usr/,}{s,}bin/iptables ix,
+  /{usr/,}{s,}bin/ip6tables ix,
+  /{usr/,}{s,}bin/xtables-nft-multi ix,
+  /{usr/,}{s,}bin/xtables-legacy-multi ix,
+  /{usr/,}{s,}bin/resolvectl ix,
+  /{usr/,}{s,}bin/sysctl ix,
+  /{usr/,}{s,}bin/systemctl ix,
+  /{usr/,}{s,}bin/nmcli ix,
+  /{usr/,}{s,}bin/iwgetid ix,
+  # Host firewall check and trust of the tunnel interface
+  # (internal/osnet/hostfw_linux.go): firewalld over D-Bus, ufw (Python).
+  /{usr/,}{s,}bin/firewall-cmd ix,
+  /{usr/,}{s,}bin/ufw ix,
+  /usr/bin/python3* ix,
+  /usr/lib{,64}/python3*/** mr,
+  /usr/lib/python3/** mr,
+  /usr/local/lib/python3*/** r,
+  /etc/ufw/** r,
+  /{usr/,}lib/ufw/** r,
+  /etc/firewalld/** r,
+  # resolvconf is a shell script on Debian/Ubuntu.
+  /{usr/,}{s,}bin/resolvconf ix,
+  /{usr/,}bin/{,da,b}sh ix,
+  /{usr/,}bin/{cat,cp,mv,rm,ln,mkdir,readlink,sed,sort,uniq,run-parts,flock} ix,
+  /etc/resolvconf/** r,
+  /lib/resolvconf/** ix,
+  /usr/lib/resolvconf/** ix,
+  /etc/iproute2/** r,
+  /usr/share/iproute2/** r,
+  /etc/nftables.conf r,
+  /usr/lib/@{multiarch}/xtables/** mr,
+  /usr/lib/xtables/** mr,
+  /usr/lib{,64}/xtables/** mr,
+  /run/systemd/private rw,
+  /run/systemd/system/ r,
+
+  # System bus: systemd-resolved, systemd (daemon-reload, enable) and
+  # NetworkManager (read only).
+  dbus send bus=system path=/org/freedesktop/resolve1{,/**} interface=org.freedesktop.resolve1.Manager peer=(name=org.freedesktop.resolve1),
+  dbus send bus=system path=/org/freedesktop/resolve1{,/**} interface=org.freedesktop.DBus.Properties peer=(name=org.freedesktop.resolve1),
+  dbus send bus=system path=/org/freedesktop/systemd1{,/**} peer=(name=org.freedesktop.systemd1),
+  dbus send bus=system path=/org/freedesktop/NetworkManager{,/**} interface=org.freedesktop.DBus.Properties member=Get{,All} peer=(name=org.freedesktop.NetworkManager),
+  dbus send bus=system path=/org/fedoraproject/FirewallD1{,/**} peer=(name=org.fedoraproject.FirewallD1),
+  dbus send bus=system path=/org/freedesktop/DBus interface=org.freedesktop.DBus member={Hello,AddMatch,RemoveMatch,GetNameOwner} peer=(name=org.freedesktop.DBus),
+  dbus receive bus=system,
+
+  # Never: other users' homes, keys of other services, module loading.
+  deny @{HOME}/** rwklx,
+  deny /root/** rwklx,
+  deny /etc/shadow* rwklx,
+  deny /etc/ssh/*_key* rwklx,
+  deny capability sys_module,
+  deny capability sys_admin,
+  deny capability sys_ptrace,
+  deny capability dac_override,
+
+  # Optional services the owner turns on (SSH server, shared or synced
+  # folders, remote desktop) need their own folders and programs: add
+  # them to /etc/apparmor.d/local/openscale-device, never here.
+  include if exists <local/openscale-device>
+}

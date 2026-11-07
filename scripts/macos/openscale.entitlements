@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  OpenScale macOS yetki listesi (#643, ADR-0195 bölüm 10).
+
+  Bilerek boş: hardened runtime hiçbir istisna olmadan açılır.
+  - com.apple.security.cs.allow-jit / allow-unsigned-executable-memory yok:
+    Go çalışma zamanı kod üretmez; WKWebView'in JavaScript derleyicisi
+    Apple'ın kendi WebContent sürecinde çalışır.
+  - com.apple.security.cs.disable-library-validation yok: yalnızca Apple
+    veya aynı ekip kimliğiyle imzalı dylib yüklenir (#644 dylib ele geçirme).
+  - com.apple.security.cs.allow-dyld-environment-variables yok:
+    DYLD_INSERT_LIBRARIES ve benzerleri yok sayılır.
+  - com.apple.security.get-task-allow yok: hata ayıklayıcı bağlanamaz.
+  - App Sandbox (com.apple.security.app-sandbox) uygulanmaz: tünel servisi
+    root olarak utun, yönlendirme ve pf kurar; masaüstü penceresi kullanıcının
+    seçtiği ağ klasörünü okur. Gerekçe ADR-0195'te.
+-->
+<plist version="1.0">
+<dict>
+</dict>
+</plist>

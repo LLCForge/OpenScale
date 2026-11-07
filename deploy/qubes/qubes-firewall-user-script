@@ -1,0 +1,38 @@
+#!/bin/sh
+# /rw/config/qubes-firewall-user-script of sys-openscale (#891,
+# docs/qubes.md). qubes-firewall runs it after it set up its own tables,
+# before any downstream qube can send traffic, and again after its own
+# restarts. Order of the kill switch:
+#   1. this script: downstream (vif*) traffic may leave only through the
+#      OpenScale interface; everything else is dropped, also while the
+#      tunnel is down or not created yet (fail closed);
+#   2. openscale-device starts (rc.local) and creates the interface;
+#   3. downstream traffic flows through the tunnel, masqueraded to this
+#      qube's OpenScale address (peers accept only overlay sources).
+# The table is ours; Qubes' own tables are not modified.
+set -eu
+
+IFACE=OpenScale
+
+nft -f - <<EOF
+table inet openscale_qubes
+delete table inet openscale_qubes
+table inet openscale_qubes {
+	chain forward {
+		# Before Qubes' own forward chain (priority filter = 0).
+		type filter hook forward priority filter - 5; policy accept;
+		# The output interface is checked before any connection state: a
+		# flow that started in the tunnel never continues on eth0 when the
+		# tunnel goes down and the route changes.
+		iifname "vif*" oifname != "$IFACE" counter drop comment "openscale kill switch: yalnizca tunel"
+		iifname "vif*" oifname "$IFACE" accept
+		# Replies from the tunnel to downstream qubes; nothing new inbound.
+		iifname "$IFACE" oifname "vif*" ct state established,related accept
+		iifname "$IFACE" oifname "vif*" counter drop comment "tunelden iceri yeni baglanti yok"
+	}
+	chain postrouting {
+		type nat hook postrouting priority srcnat; policy accept;
+		oifname "$IFACE" masquerade
+	}
+}
+EOF

@@ -1,0 +1,98 @@
+# OpenScale as a sidecar in Kubernetes (#318, ADR-0091; docs/kubernetes.md).
+# The sidecar shares the pod's network namespace, so the application
+# container is reachable from the private network at the pod's OpenScale
+# address and name, and only this pod gets a tunnel. There is no operator
+# and no access to the Kubernetes API: the sidecar reads its invite code
+# from a mounted file and keeps its keys in its own volume.
+#
+# File state (OPENSCALE_STATE=file): a StatefulSet gives each replica its
+# own PersistentVolumeClaim, so the device keeps its identity across
+# restarts and rescheduling. One replica = one device in the network.
+#
+# Before applying:
+#   1. Build the image (deploy/docker/Dockerfile) and push it to a registry
+#      the cluster pulls from; replace the image below with that reference.
+#   2. kubectl -n openscale-demo create secret generic openscale-invite \
+#        --from-file=invite=./invite.txt
+#   3. kubectl apply -f deploy/kubernetes/sidecar-statefulset.yaml
+#   4. kubectl -n openscale-demo logs web-0 -c openscale  -> approval code
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: openscale-demo
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: web
+  namespace: openscale-demo
+spec:
+  serviceName: web
+  replicas: 1
+  selector:
+    matchLabels: {app: web}
+  template:
+    metadata:
+      labels: {app: web}
+    spec:
+      automountServiceAccountToken: false # the sidecar never talks to the API
+      securityContext:
+        seccompProfile: {type: RuntimeDefault}
+      initContainers:
+        # Native sidecar (Kubernetes 1.29+): starts before and stops after
+        # the application container.
+        - name: openscale
+          image: openscale:local
+          imagePullPolicy: IfNotPresent
+          restartPolicy: Always
+          env:
+            - {name: OPENSCALE_STATE, value: file}
+            - {name: OPENSCALE_LISTEN_PORT, value: "41821"}
+            - name: OPENSCALE_HOSTNAME
+              valueFrom: {fieldRef: {fieldPath: metadata.name}}
+          securityContext:
+            runAsUser: 0 # root only inside the pod; see ADR-0091
+            runAsNonRoot: false
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+              add: [NET_ADMIN]
+          resources:
+            requests: {cpu: 10m, memory: 32Mi}
+            limits: {memory: 256Mi}
+          volumeMounts:
+            - {name: state, mountPath: /var/lib/openscale}
+            - {name: tun, mountPath: /dev/net/tun}
+            - {name: tmp, mountPath: /tmp}
+            - {name: invite, mountPath: /run/secrets/openscale-invite, subPath: invite, readOnly: true}
+      containers:
+        - name: web
+          image: nginxinc/nginx-unprivileged:1.27-alpine
+          ports:
+            - {containerPort: 8080, name: http}
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          volumeMounts:
+            - {name: nginx-tmp, mountPath: /tmp}
+      volumes:
+        - name: tun
+          hostPath: {path: /dev/net/tun, type: CharDevice}
+        - name: tmp
+          emptyDir: {medium: Memory, sizeLimit: 16Mi}
+        - name: nginx-tmp
+          emptyDir: {sizeLimit: 64Mi}
+        - name: invite
+          secret:
+            secretName: openscale-invite
+            defaultMode: 0400
+  volumeClaimTemplates:
+    - metadata:
+        name: state
+      spec:
+        accessModes: [ReadWriteOnce]
+        resources:
+          requests: {storage: 64Mi}

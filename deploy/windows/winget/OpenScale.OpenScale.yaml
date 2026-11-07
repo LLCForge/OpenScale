@@ -1,0 +1,7 @@
+# winget version manifest template (#887). scripts/package-manifests.sh
+# fills the version; do not edit the filled copies by hand.
+PackageIdentifier: OpenScale.OpenScale
+PackageVersion: @VERSION@
+DefaultLocale: tr-TR
+ManifestType: version
+ManifestVersion: 1.6.0

@@ -1,0 +1,310 @@
+// Package cloudinit writes a cloud-init user-data file that turns a fresh
+// Debian or Ubuntu VPS into an OpenScale coordinator or exit node (#480,
+// docs/sunucu-kurulumu.md). No provider API is used: the owner pastes the
+// file into the provider's "user data" box.
+//
+// The program package is fetched from an address the owner chooses and is
+// installed only when its SHA-256 and size equal the values the owner's
+// own computer read from the signed release manifest (verified against the
+// release root key before the file is written). The server gets key-only
+// SSH, automatic security updates, a drop-by-default firewall and the
+// hardened units. An exit node joins with a pre-authorized enrollment key
+// (#288); a coordinator only creates its key and prints the fingerprint,
+// because the owner must pin it in the signed document.
+package cloudinit
+
+import (
+	"bytes"
+	"compress/gzip"
+	"encoding/base64"
+	"errors"
+	"fmt"
+	"net/url"
+	"regexp"
+	"strconv"
+	"strings"
+)
+
+// Roles.
+const (
+	RoleCoordinator = "coordinator"
+	RoleExit        = "exit"
+)
+
+// Limits.
+const (
+	maxSSHKeys = 16
+	maxURL     = 512
+	// MaxUserData is what most providers accept (several allow only 16
+	// KiB; the generator warns above that).
+	MaxUserData = 64 << 10
+	// WarnUserData is the size above which some providers refuse.
+	WarnUserData = 16 << 10
+)
+
+// Options describe the server.
+type Options struct {
+	Role     string
+	Hostname string
+	SSHKeys  []string
+	// PackageURL is the https address of openscale_<version>_<arch>.deb.
+	PackageURL string
+	// PackageSHA256 and PackageSize come from the verified manifest.
+	PackageSHA256 string
+	PackageSize   int64
+	// ListenPort is the WireGuard UDP port (zero: 41820 coordinator,
+	// 41821 exit node).
+	ListenPort int
+	// TCPListen turns on the coordinator's TCP transport (ADR-0032), for
+	// example 443; zero leaves it off.
+	TCPListen int
+	// AuthKey is the exit node's pre-authorized enrollment key (#288).
+	AuthKey string
+}
+
+var (
+	hostnameRE = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$`)
+	sshKeyRE   = regexp.MustCompile(`^(ssh-ed25519|ecdsa-sha2-nistp256|ecdsa-sha2-nistp384|ecdsa-sha2-nistp521|sk-ssh-ed25519@openssh\.com|sk-ecdsa-sha2-nistp256@openssh\.com|ssh-rsa) [A-Za-z0-9+/]+={0,2}( [A-Za-z0-9@._-]{1,64})?$`)
+	urlRE      = regexp.MustCompile(`^[A-Za-z0-9._~:/%+-]+$`)
+	sha256RE   = regexp.MustCompile(`^[0-9a-f]{64}$`)
+	authKeyRE  = regexp.MustCompile(`^osauth1\.[A-Za-z0-9_-]+$`)
+)
+
+// Validate checks every value strictly; values reach a shell script, so
+// only plain characters are accepted.
+func (o *Options) Validate() error {
+	switch o.Role {
+	case RoleCoordinator:
+		if o.AuthKey != "" {
+			return errors.New("koordinatör ön onaylı kayıt anahtarı kullanmaz; anahtarı sahibin belgesine işlenir")
+		}
+	case RoleExit:
+		if o.AuthKey == "" {
+			return errors.New("çıkış düğümü için ön onaylı kayıt anahtarı gerekir ('openscale device preauth --exit-node')")
+		}
+		if !authKeyRE.MatchString(o.AuthKey) {
+			return errors.New("kayıt anahtarı osauth1. ile başlamalı")
+		}
+		if o.TCPListen != 0 {
+			return errors.New("TCP taşıması yalnızca koordinatörde açılır")
+		}
+	default:
+		return errors.New("rol coordinator veya exit olmalı")
+	}
+	if !hostnameRE.MatchString(o.Hostname) {
+		return errors.New("sunucu adı küçük harfli bir DNS etiketi olmalı")
+	}
+	if len(o.SSHKeys) == 0 || len(o.SSHKeys) > maxSSHKeys {
+		return fmt.Errorf("1 ile %d arasında SSH açık anahtarı gerekir (parolayla giriş kapalıdır)", maxSSHKeys)
+	}
+	for i, k := range o.SSHKeys {
+		if !sshKeyRE.MatchString(strings.TrimSpace(k)) {
+			return fmt.Errorf("SSH anahtarı %d tanınmadı (ssh-ed25519 AAAA... [açıklama])", i+1)
+		}
+		o.SSHKeys[i] = strings.TrimSpace(k)
+	}
+	u, err := url.Parse(o.PackageURL)
+	if len(o.PackageURL) > maxURL || !urlRE.MatchString(o.PackageURL) || err != nil || u.Scheme != "https" || !strings.HasPrefix(o.PackageURL, u.Scheme+"://") {
+		return errors.New("paket adresi https ile başlamalı ve yalnızca düz karakterler içermeli")
+	}
+	if u.Host == "" || u.User != nil || !strings.HasSuffix(u.Path, ".deb") {
+		return errors.New("paket adresi bir .deb dosyasını göstermeli")
+	}
+	if !sha256RE.MatchString(o.PackageSHA256) || o.PackageSize <= 0 {
+		return errors.New("paketin SHA-256 özeti ve boyutu imzalı manifestodan gelmeli")
+	}
+	if o.ListenPort == 0 {
+		o.ListenPort = 41820
+		if o.Role == RoleExit {
+			o.ListenPort = 41821
+		}
+	}
+	if o.ListenPort < 1 || o.ListenPort > 65535 || o.TCPListen < 0 || o.TCPListen > 65535 || (o.TCPListen != 0 && o.TCPListen == 22) {
+		return errors.New("geçersiz port")
+	}
+	return nil
+}
+
+// Generate returns the user-data file.
+func Generate(o Options) ([]byte, error) {
+	if err := o.Validate(); err != nil {
+		return nil, err
+	}
+	var b strings.Builder
+	w := func(format string, args ...any) { fmt.Fprintf(&b, format, args...) }
+	role := map[string]string{RoleCoordinator: "koordinatör", RoleExit: "çıkış düğümü"}[o.Role]
+	w("#cloud-config\n")
+	w("# OpenScale %s (#480, docs/sunucu-kurulumu.md). Generated by\n", role)
+	w("# 'openscale server cloud-init'. Debian 12/13 or Ubuntu 22.04+.\n")
+	w("# The package is installed only if its SHA-256 and size match the signed\n")
+	w("# release manifest checked on the owner's computer.\n")
+	if o.Role == RoleExit {
+		w("# This file holds a pre-authorized enrollment key: the provider can read\n")
+		w("# user data. Use a short-lived key and remove the user data after boot.\n")
+	}
+	w("\nhostname: %s\n", o.Hostname)
+	w("ssh_pwauth: false\ndisable_root: true\n")
+	w("ssh_authorized_keys:\n")
+	for _, k := range o.SSHKeys {
+		w("  - %s\n", yamlQuote(k))
+	}
+	w("package_update: true\npackage_upgrade: true\n")
+	w("packages:\n  - curl\n  - nftables\n  - unattended-upgrades\n")
+	w("\nwrite_files:\n")
+	file := func(path, perm, content string) {
+		w("  - path: %s\n    permissions: %s\n    owner: root:root\n    content: |\n", path, yamlQuote(perm))
+		for _, line := range strings.Split(strings.TrimSuffix(content, "\n"), "\n") {
+			if line == "" {
+				w("\n")
+				continue
+			}
+			w("      %s\n", line)
+		}
+	}
+	file("/etc/ssh/sshd_config.d/10-openscale.conf", "0644", sshdConfig)
+	file("/etc/apt/apt.conf.d/20auto-upgrades", "0644", "APT::Periodic::Update-Package-Lists \"1\";\nAPT::Periodic::Unattended-Upgrade \"1\";\n")
+	file("/etc/nftables.conf", "0644", nftables(o))
+	if o.Role == RoleCoordinator && o.TCPListen != 0 {
+		file("/etc/default/openscale-coordinator", "0644", "OPENSCALE_TCP_LISTEN=:"+strconv.Itoa(o.TCPListen)+"\n")
+	}
+	if o.Role == RoleExit {
+		gz, err := gzipBase64(o.AuthKey)
+		if err != nil {
+			return nil, err
+		}
+		w("  - path: /var/lib/openscale-firstboot/auth.key\n    permissions: '0600'\n    owner: root:root\n    encoding: gz+b64\n    content: %s\n", gz)
+	}
+	file("/usr/local/sbin/openscale-firstboot", "0700", firstboot(o))
+	w("\nruncmd:\n  - [/usr/local/sbin/openscale-firstboot]\n")
+	out := []byte(b.String())
+	if len(out) > MaxUserData {
+		return nil, fmt.Errorf("user-data %d bayt; sağlayıcıların çoğu en fazla %d bayt kabul eder", len(out), MaxUserData)
+	}
+	return out, nil
+}
+
+// yamlQuote single-quotes a scalar.
+func yamlQuote(s string) string { return "'" + strings.ReplaceAll(s, "'", "''") + "'" }
+
+func gzipBase64(s string) (string, error) {
+	var buf bytes.Buffer
+	zw, err := gzip.NewWriterLevel(&buf, gzip.BestCompression)
+	if err != nil {
+		return "", err
+	}
+	if _, err := zw.Write([]byte(s + "\n")); err != nil {
+		return "", err
+	}
+	if err := zw.Close(); err != nil {
+		return "", err
+	}
+	return base64.StdEncoding.EncodeToString(buf.Bytes()), nil
+}
+
+// sshdConfig is deploy/linux/sshd-openscale.conf.
+const sshdConfig = `# Key-only SSH (OpenScale). Read before the distribution's drop-ins.
+PermitRootLogin no
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+PubkeyAuthentication yes
+AuthenticationMethods publickey
+PermitEmptyPasswords no
+X11Forwarding no
+AllowAgentForwarding no
+AllowTcpForwarding no
+PermitTunnel no
+MaxAuthTries 3
+LoginGraceTime 20
+ClientAliveInterval 300
+ClientAliveCountMax 2
+`
+
+// nftables is deploy/linux/nftables.conf with this server's ports.
+func nftables(o Options) string {
+	tcp := ""
+	if o.TCPListen != 0 {
+		tcp = "\t\ttcp dport " + strconv.Itoa(o.TCPListen) + " accept\n"
+	}
+	return `#!/usr/sbin/nft -f
+# OpenScale server (deploy/linux/nftables.conf): inbound dropped except the
+# WireGuard port, rate-limited SSH and essential ICMP.
+flush ruleset
+
+table inet filter {
+	chain input {
+		type filter hook input priority filter; policy drop;
+		ct state established,related accept
+		ct state invalid drop
+		iif "lo" accept
+		iifname "OpenScale" accept
+		ip protocol icmp icmp type { echo-request, destination-unreachable, time-exceeded } limit rate 5/second accept
+		ip6 nexthdr icmpv6 icmpv6 type { destination-unreachable, packet-too-big, time-exceeded, parameter-problem, echo-request, nd-router-advert, nd-neighbor-solicit, nd-neighbor-advert } accept
+		udp dport ` + strconv.Itoa(o.ListenPort) + ` accept
+` + tcp + `		tcp dport 22 ct state new limit rate 6/minute burst 6 packets accept
+	}
+	chain forward {
+		type filter hook forward priority filter; policy drop;
+		ct state established,related accept
+		iifname "OpenScale" accept
+	}
+	chain output {
+		type filter hook output priority filter; policy accept;
+	}
+}
+`
+}
+
+// firstboot is the script run once by cloud-init. Every interpolated value
+// passed Validate.
+func firstboot(o Options) string {
+	var b strings.Builder
+	b.WriteString(`#!/bin/sh
+# OpenScale first boot (#480). Safe to run again.
+set -eu
+work=/var/lib/openscale-firstboot
+install -d -m 0700 "$work"
+log() { echo "OpenScale: $*" | tee /dev/console >&2 || true; }
+if ! dpkg-query -W -f='${Status}' openscale 2>/dev/null | grep -q 'install ok installed'; then
+  deb="$work/openscale.deb"
+`)
+	fmt.Fprintf(&b, "  curl -fsSL --proto '=https' --tlsv1.2 --retry 5 -o \"$deb\" '%s'\n", o.PackageURL)
+	fmt.Fprintf(&b, "  [ \"$(stat -c %%s \"$deb\")\" = '%d' ] || { log 'paket boyutu manifestoyla uyuşmuyor; kurulmadı'; exit 1; }\n", o.PackageSize)
+	fmt.Fprintf(&b, "  echo '%s  '\"$deb\" | sha256sum -c - || { log 'paket özeti manifestoyla uyuşmuyor; kurulmadı'; exit 1; }\n", o.PackageSHA256)
+	b.WriteString(`  apt-get install -y --no-install-recommends "$deb"
+  rm -f "$deb"
+fi
+systemctl enable --now nftables
+systemctl reload ssh 2>/dev/null || systemctl reload sshd 2>/dev/null || true
+`)
+	switch o.Role {
+	case RoleCoordinator:
+		if o.ListenPort != 41820 {
+			fmt.Fprintf(&b, "install -d -m 0755 /etc/systemd/system/openscale-coordinator.service.d\nprintf '[Service]\\nExecStart=\\nExecStart=/usr/bin/openscale coordinator run --state-dir /var/lib/openscale/coordinator --listen-port %d\\n' > /etc/systemd/system/openscale-coordinator.service.d/50-port.conf\nsystemctl daemon-reload\n", o.ListenPort)
+		}
+		b.WriteString(`install -d -m 0755 /var/lib/openscale
+install -d -o openscale -g openscale -m 0700 /var/lib/openscale/coordinator
+if [ ! -f /root/openscale-coordinator.txt ]; then
+  runuser -u openscale -- openscale coordinator keygen --state-dir /var/lib/openscale/coordinator > /root/openscale-coordinator.txt
+  chmod 0600 /root/openscale-coordinator.txt
+fi
+log "koordinatör anahtarı hazır; parmak izi:"
+grep -E 'Parmak izi|WireGuard' /root/openscale-coordinator.txt | tee /dev/console || true
+log "yönetici cihazda 'network set-coordinator' çalıştırın, katılım paketini 'join' ile verin, sonra: systemctl enable --now openscale-coordinator"
+`)
+	case RoleExit:
+		if o.ListenPort != 41821 {
+			fmt.Fprintf(&b, "install -d -m 0755 /etc/systemd/system/openscale-device.service.d\nprintf '[Service]\\nExecStart=\\nExecStart=/usr/bin/openscale up --state-dir /var/lib/openscale/device --listen-port %d --interface OpenScale\\n' > /etc/systemd/system/openscale-device.service.d/50-port.conf\nsystemctl daemon-reload\n", o.ListenPort)
+		}
+		b.WriteString(`if [ ! -f /var/lib/openscale/device/anchor.json ] && [ -f "$work/auth.key" ]; then
+  openscale preauth-join --state-dir /var/lib/openscale/device --key "@$work/auth.key"
+fi
+# The enrollment key is a credential: never leave it on disk.
+rm -f "$work/auth.key"
+systemctl enable --now openscale-device.service
+log "çıkış düğümü ağa katıldı"
+`)
+	}
+	b.WriteString(`openscale server audit --role ` + o.Role + ` > /root/openscale-audit.txt 2>&1 || true
+`)
+	return b.String()
+}

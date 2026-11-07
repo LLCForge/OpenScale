@@ -1,0 +1,59 @@
+# Arch Linux recipe for OpenScale (#317, ADR-0091). It builds the program
+# from this checkout; nothing is downloaded except the Go modules pinned in
+# go.sum (or nothing at all with a vendor/ tree, scripts/release.sh
+# --vendor). Run from this directory: makepkg -si
+#
+# The units are installed but never enabled: join the network first
+# (docs/sunucu-kurulumu.md).
+
+pkgname=openscale
+pkgver=$(tr -d ' \r\n' < "${startdir:-.}/../../VERSION" | tr '-' '_')
+pkgrel=1
+pkgdesc='Personal, single-owner WireGuard mesh VPN'
+arch=('x86_64' 'aarch64' 'armv7h')
+license=('LicenseRef-OpenScale-Unlicensed')
+depends=('iproute2')
+optdepends=('nftables: exit node NAT and the persistent kill switch')
+makedepends=('go>=2:1.26')
+options=('!debug' '!lto')
+
+_root() {
+	cd "$startdir/../.."
+}
+
+build() {
+	_root
+	local v b
+	v=$(tr -d ' \r\n' < VERSION)
+	b=$(date -u -d "@${SOURCE_DATE_EPOCH:-0}" +%Y%m%d.%H%M)
+	export CGO_ENABLED=0 GOTOOLCHAIN=local GOFLAGS='-buildvcs=false -modcacherw'
+	go mod verify
+	[ ! -d tools/depcheck ] || go run ./tools/depcheck go.mod
+	go build -trimpath \
+		-ldflags "-s -w -buildid= -X github.com/openscale/openscale/internal/version.Version=$v -X github.com/openscale/openscale/internal/version.Build=$b" \
+		-o "$srcdir/openscale" ./cmd/openscale
+	go build -trimpath -ldflags "-s -w -buildid= -X main.embeddedRootKey=$(tr -d ' \r\n' < build/release/root.pub 2>/dev/null || true)" \
+		-o "$srcdir/openscale-release-verify" ./cmd/releaseverify
+}
+
+check() {
+	_root
+	go test ./internal/osnet/... ./cmd/...
+}
+
+package() {
+	_root
+	install -Dm0755 "$srcdir/openscale" "$pkgdir/usr/bin/openscale"
+	install -Dm0755 "$srcdir/openscale-release-verify" "$pkgdir/usr/bin/openscale-release-verify"
+	local u
+	for u in openscale-coordinator.service openscale-device.service; do
+		sed 's#/usr/local/bin/openscale #/usr/bin/openscale #' "deploy/linux/$u" |
+			install -Dm0644 /dev/stdin "$pkgdir/usr/lib/systemd/system/$u"
+	done
+	install -Dm0644 deploy/linux/openscale.sysusers "$pkgdir/usr/lib/sysusers.d/openscale.conf"
+	install -Dm0644 deploy/linux/openscale.tmpfiles "$pkgdir/usr/lib/tmpfiles.d/openscale.conf"
+	local ex
+	for ex in nftables.conf sshd-openscale.conf 50-openscale-upgrades.conf; do
+		install -Dm0644 "deploy/linux/$ex" "$pkgdir/usr/share/doc/openscale/examples/$ex"
+	done
+}
